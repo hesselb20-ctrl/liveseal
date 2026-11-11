@@ -165,6 +165,11 @@ console.log(`runs ${metas.length}, periods ${samples.length} (${samples.filter((
 
 /** Attack classes that replace the person or the scene: the digest must never match these. */
 const MUST_REJECT = ['swap', 'other'];
+/** Attacks that change little: they separate a sensitive digest from a blunt one. */
+const SUBTLE = ['warp:0.03', 'warp:0.06', 'mouth:8', 'mouth:20', 'still', 'shift:15'];
+/** Thresholds are tied to the genuine distribution: no genuine period may come close to them. */
+export const MATCH_MARGIN = 1.25;
+export const MISMATCH_MARGIN = 1.75;
 
 interface Row {
   key: string;
@@ -172,15 +177,17 @@ interface Row {
   genuine: { p50: number; p95: number; p99: number; max: number };
   perCondition: Record<string, { p95: number; max: number }>;
   attacks: Record<string, { min: number; p05: number; p50: number; auc: number; n: number }>;
-  /** Largest threshold below every must-reject attack sample (with a 10% margin). */
+  /** Match threshold: MATCH_MARGIN times the largest genuine distance seen. */
   matchThreshold: number;
-  /** Genuine periods that would not reach "match" at that threshold. */
-  genuineNotMatched: number;
-  /** Smallest threshold above every genuine sample (with a 10% margin). */
+  /** Mismatch threshold: MISMATCH_MARGIN times the largest genuine distance seen. */
   mismatchThreshold: number;
-  /** Per class: share of attack periods at or above the mismatch threshold (red), and below the match threshold (false match). */
+  /** Smallest must-reject (swap, other) distance divided by the largest genuine distance. */
+  separation: number;
+  /** Per class: share of attack periods at or above the mismatch threshold (red), and at or below the match threshold (false match). */
   red: Record<string, number>;
   falseMatch: Record<string, number>;
+  /** Mean false-match share over the subtle attack classes; lower is better. */
+  subtleFalseMatch: number;
 }
 
 const rows: Row[] = [];
@@ -199,8 +206,9 @@ cands.forEach((c, i) => {
     attacks[cls] = { min: v[0], p05: quantile(v, 0.05), p50: quantile(v, 0.5), auc: auc(gen, v), n: v.length };
   }
   const must = MUST_REJECT.flatMap((cls) => byClass.get(cls) ?? []);
-  const matchThreshold = Math.min(...must) * 0.9;
-  const mismatchThreshold = Math.max(gen[gen.length - 1] * 1.1, matchThreshold);
+  const maxGenuine = gen[gen.length - 1];
+  const matchThreshold = maxGenuine * MATCH_MARGIN;
+  const mismatchThreshold = maxGenuine * MISMATCH_MARGIN;
   const red: Row['red'] = {};
   const falseMatch: Row['falseMatch'] = {};
   for (const cls of classes) {
@@ -208,30 +216,36 @@ cands.forEach((c, i) => {
     red[cls] = v.filter((x) => x >= mismatchThreshold).length / v.length;
     falseMatch[cls] = v.filter((x) => x <= matchThreshold).length / v.length;
   }
+  const subtle = SUBTLE.filter((cls) => byClass.has(cls));
   rows.push({
     key: c.key,
-    bytes: c.kind === 'thumb' ? (c.bits * c.snaps) / 8 : (c.bits * c.snaps) / 8,
-    genuine: { p50: quantile(gen, 0.5), p95: quantile(gen, 0.95), p99: quantile(gen, 0.99), max: gen[gen.length - 1] },
+    bytes: (c.bits * c.snaps) / 8,
+    genuine: { p50: quantile(gen, 0.5), p95: quantile(gen, 0.95), p99: quantile(gen, 0.99), max: maxGenuine },
     perCondition,
     attacks,
     matchThreshold,
-    genuineNotMatched: gen.filter((x) => x > matchThreshold).length / gen.length,
     mismatchThreshold,
+    separation: Math.min(...must) / maxGenuine,
     red,
     falseMatch,
+    subtleFalseMatch: subtle.reduce((sum, cls) => sum + falseMatch[cls], 0) / subtle.length,
   });
 });
 
 const f3 = (v: number) => v.toFixed(3);
 const pct = (v: number) => `${(100 * v).toFixed(1)}%`;
-console.log('\ncandidate            bytes  genuine p50/p99/max     swap min/p05   T-match  genuine-not-matched  T-mismatch  red: ' + classes.join(' '));
-for (const r of rows.slice().sort((a, b) => a.genuineNotMatched - b.genuineNotMatched || a.bytes - b.bytes)) {
+// Candidates that fail the hard requirement (a swap or another person must never match, and must
+// always be flagged) are listed last. The rest are ranked by how few subtle edits slip through.
+const usable = (r: Row) => MUST_REJECT.every((cls) => r.falseMatch[cls] === 0 && r.red[cls] === 1);
+const ranked = rows.slice().sort((x, y) => Number(usable(y)) - Number(usable(x)) || x.subtleFalseMatch - y.subtleFalseMatch || x.bytes - y.bytes);
+console.log(`\nthresholds: match <= ${MATCH_MARGIN} x largest genuine distance, mismatch >= ${MISMATCH_MARGIN} x`);
+console.log('candidate          bytes ok  genuine p50/p99/max   sep   T-match T-mism  false-match: ' + classes.map((c) => c.padStart(9)).join(' ') + '   subtle');
+for (const r of ranked) {
   console.log(
-    r.key.padEnd(20), String(r.bytes).padStart(4), ' ',
-    `${f3(r.genuine.p50)}/${f3(r.genuine.p99)}/${f3(r.genuine.max)}`.padEnd(22),
-    `${f3(r.attacks.swap.min)}/${f3(r.attacks.swap.p05)}`.padEnd(14),
-    f3(r.matchThreshold).padEnd(8), pct(r.genuineNotMatched).padStart(8).padEnd(20), f3(r.mismatchThreshold).padEnd(11),
-    classes.map((cls) => pct(r.red[cls]).padStart(6)).join(' '),
+    r.key.padEnd(18), String(r.bytes).padStart(4), usable(r) ? ' y ' : ' NO',
+    `${f3(r.genuine.p50)}/${f3(r.genuine.p99)}/${f3(r.genuine.max)}`.padEnd(20),
+    r.separation.toFixed(2).padStart(5), ' ', f3(r.matchThreshold), ' ', f3(r.mismatchThreshold), '              ',
+    classes.map((cls) => pct(r.falseMatch[cls]).padStart(9)).join(' '), '  ', pct(r.subtleFalseMatch).padStart(6),
   );
 }
 

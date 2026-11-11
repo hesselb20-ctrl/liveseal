@@ -25,16 +25,19 @@ export interface DigestParams {
   thumbMismatch: number;
 }
 
+// Measured on 2,016 genuine and 8,736 attack periods (docs/EVALUATION.md, section 3):
+// the largest genuine face distance was 0.044 and the smallest distance of a replaced
+// face was 0.106; for the whole-frame hash 0.006 against 0.232 for a replaced scene.
 export const DIGEST: DigestParams = {
-  kind: 'dct',
-  faceBits: 64,
+  kind: 'gradient',
+  faceBits: 48,
   faceSnaps: [0, 2, 4, 6],
   thumbBits: 32,
   thumbSnaps: [1, 5],
-  faceMatch: 0.2,
-  faceMismatch: 0.3,
-  thumbMatch: 0.2,
-  thumbMismatch: 0.3,
+  faceMatch: 0.055,
+  faceMismatch: 0.085,
+  thumbMatch: 0.05,
+  thumbMismatch: 0.12,
 };
 
 export function digestLength(p: DigestParams = DIGEST): number {
@@ -65,6 +68,23 @@ function faceFeatures(f: PeriodFeatures, s: number, p: DigestParams): Float32Arr
 
 function frameFeatures(f: PeriodFeatures, s: number, p: DigestParams): Float32Array {
   return thumbFeatures(f.thumbs.subarray(s * THUMB_FLOATS, (s + 1) * THUMB_FLOATS), THUMB_W, THUMB_H, p.thumbBits);
+}
+
+/**
+ * A patch with almost no contrast (a covered lens, a black frame) has nothing
+ * to hash: its bits are decided by noise. Such snapshots are left out of the
+ * comparison, so they can make a period uncertain but never a match or a
+ * mismatch. The value is a standard deviation in 8-bit levels.
+ */
+export const MIN_CONTRAST = 5;
+
+function contrast(patch: Float32Array): number {
+  let mean = 0;
+  for (let i = 0; i < patch.length; i++) mean += patch[i];
+  mean /= patch.length;
+  let v = 0;
+  for (let i = 0; i < patch.length; i++) v += (patch[i] - mean) ** 2;
+  return Math.sqrt(v / patch.length);
 }
 
 /** Sender side: the digest of one period's features. */
@@ -132,7 +152,7 @@ export function compareDigest(
   let faceWeight = 0;
   const withFace = hasFace(box);
   for (const s of p.faceSnaps) {
-    if (withFace && features.valid[s]) {
+    if (withFace && features.valid[s] && contrast(features.faces.subarray(s * FACE_FLOATS, (s + 1) * FACE_FLOATS)) >= MIN_CONTRAST) {
       const d = weightedDistance(digest, offset, faceFeatures(features, s, p));
       faceSum += d.distance;
       faceWeight += d.weight;
@@ -143,15 +163,15 @@ export function compareDigest(
   let frameSum = 0;
   let frameCount = 0;
   for (const s of p.thumbSnaps) {
-    if (features.valid[s]) {
+    if (features.valid[s] && contrast(features.thumbs.subarray(s * THUMB_FLOATS, (s + 1) * THUMB_FLOATS)) >= MIN_CONTRAST) {
       frameSum += weightedDistance(digest, offset, frameFeatures(features, s, p)).distance;
       frameCount++;
     }
     offset += p.thumbBits;
   }
-  // Not enough of the window was seen to judge it.
+  // Not enough of the window was seen (or it had too little in it) to judge it.
   if (faceCount < Math.ceil(p.faceSnaps.length / 2) || frameCount === 0) {
-    const none = faceCount === 0 && frameCount === 0;
+    const none = !features.valid.some(Boolean);
     return { verdict: none ? 'unobserved' : 'uncertain', score: 0.5, face: 0.5, frame: 0.5 };
   }
   const face = faceSum / faceCount;

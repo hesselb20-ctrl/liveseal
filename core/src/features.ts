@@ -89,7 +89,9 @@ export class FrameHistory {
     const n = this.times.length;
     if (n > 0 && tMs <= this.times[n - 1]) return;
     this.times.push(tMs);
-    this.frames.push(Uint8ClampedArray.from(reduced));
+    const copy = new Uint8ClampedArray(reduced.length);
+    copy.set(reduced);
+    this.frames.push(copy);
     while (this.times.length > 0 && this.times[0] < tMs - this.keepMs) {
       this.times.shift();
       this.frames.shift();
