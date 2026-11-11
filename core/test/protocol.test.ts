@@ -298,7 +298,7 @@ test('checker: organisation key outside its validity dates is rejected', async (
 test('badge: green needs N valid periods in a row and drops at once', async () => {
   const { mum, dir } = await setup();
   const key = dir.findByName('Mum')[0];
-  const valid: PeriodOutcome = { code: 'valid', key, score: 0, statement: await statementFor(mum) };
+  const valid: PeriodOutcome = { code: 'valid', key, score: 0, statement: await statementFor(mum), checked: true };
   const m = new BadgeMachine();
   assert.equal(m.badge.level, 'amber');
   assert.equal(m.push({ code: 'no-seal' }).level, 'amber');
@@ -321,7 +321,7 @@ test('badge: green needs N valid periods in a row and drops at once', async () =
 test('badge: red is immediate, sticky, and cleared only by re-earning green', async () => {
   const { mum, dir } = await setup();
   const key = dir.findByName('Mum')[0];
-  const valid: PeriodOutcome = { code: 'valid', key, score: 0, statement: await statementFor(mum) };
+  const valid: PeriodOutcome = { code: 'valid', key, score: 0, statement: await statementFor(mum), checked: true };
   const m = new BadgeMachine();
   m.push(valid);
   m.push(valid);
@@ -345,8 +345,8 @@ test('badge: a run of valid periods from two different keys never adds up to gre
   const b = await newSigner();
   await dir.addContact('A', a.publicKey, 1);
   await dir.addContact('B', b.publicKey, 1);
-  const va: PeriodOutcome = { code: 'valid', key: dir.findByName('A')[0], score: 0, statement: await statementFor(a) };
-  const vb: PeriodOutcome = { code: 'valid', key: dir.findByName('B')[0], score: 0, statement: await statementFor(b) };
+  const va: PeriodOutcome = { code: 'valid', key: dir.findByName('A')[0], score: 0, statement: await statementFor(a), checked: true };
+  const vb: PeriodOutcome = { code: 'valid', key: dir.findByName('B')[0], score: 0, statement: await statementFor(b), checked: true };
   const m = new BadgeMachine();
   for (let i = 0; i < 6; i++) assert.notEqual(m.push(i % 2 ? va : vb).level, 'green');
 });
@@ -366,7 +366,7 @@ test('badge: exhaustive walk over outcome sequences never yields an unearned gre
   const key = dir.findByName('Mum')[0];
   const stmt = await statementFor(mum);
   const outcomes: PeriodOutcome[] = [
-    { code: 'valid', key, score: 0, statement: stmt },
+    { code: 'valid', key, score: 0, statement: stmt, checked: true },
     { code: 'no-seal' }, { code: 'unreadable' }, { code: 'unknown-key', keyId: key.keyId },
     { code: 'content-uncertain', key, score: 0.5 }, { code: 'content-mismatch', key, score: 1 },
     { code: 'bad-signature', key }, { code: 'awaiting-challenge', key },
@@ -389,4 +389,23 @@ test('badge: exhaustive walk over outcome sequences never yields an unearned gre
   };
   walk([]);
   assert.equal(sequences, outcomes.length ** depth);
+});
+
+test('badge: a statement whose pictures predate the verifier counts towards the run but cannot turn it green', async () => {
+  const { mum, dir, check } = await setup();
+  const key = dir.findByName('Mum')[0];
+  const stmt = await statementFor(mum);
+  const unchecked: PeriodOutcome = { code: 'valid', key, score: 0, statement: stmt, checked: false };
+  const checked: PeriodOutcome = { code: 'valid', key, score: 0, statement: stmt, checked: true };
+  const m = new BadgeMachine();
+  assert.equal(m.push(unchecked).level, 'amber');
+  assert.equal(m.push(unchecked).level, 'amber');
+  assert.equal(m.push(checked).level, 'green');
+  const m2 = new BadgeMachine();
+  assert.equal(m2.push(unchecked).level, 'amber');
+  assert.equal(m2.push(checked).level, 'green');
+  // the checker reports 'unobserved' comparisons as valid-but-unchecked
+  const out = await check(await signStatement(stmt, mum), { cmp: { verdict: 'unobserved', score: 0 } });
+  assert.equal(out.code, 'valid');
+  assert.equal(out.code === 'valid' && out.checked, false);
 });

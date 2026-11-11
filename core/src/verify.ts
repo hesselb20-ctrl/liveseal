@@ -8,7 +8,12 @@ import { equalBytes, toHex } from './bytes.ts';
 import type { KeyDirectory, PinnedKey } from './directory.ts';
 import { NO_SESSION, PERIOD_MS, PROTOCOL_VERSION, parseStatement, verifyStatement, type Statement } from './statement.ts';
 
-export type ContentVerdict = 'match' | 'uncertain' | 'mismatch';
+/**
+ * 'unobserved' means the signed window lies before the verifier started
+ * watching, so there is nothing to compare. It can only happen for the first
+ * statement of a stream.
+ */
+export type ContentVerdict = 'match' | 'uncertain' | 'mismatch' | 'unobserved';
 
 export interface ContentComparison {
   verdict: ContentVerdict;
@@ -31,7 +36,7 @@ export type PeriodOutcome =
   | { code: 'stale'; key: PinnedKey; skewSeconds: number }
   | { code: 'replayed'; key: PinnedKey }
   | { code: 'content-mismatch'; key: PinnedKey; score: number }
-  | { code: 'valid'; key: PinnedKey; score: number; statement: Statement };
+  | { code: 'valid'; key: PinnedKey; score: number; statement: Statement; /** false when the content could not be compared ('unobserved') */ checked: boolean };
 
 export type OutcomeCode = PeriodOutcome['code'];
 
@@ -136,7 +141,7 @@ export class SealChecker {
     // Only a statement that passed every cryptographic check advances the replay counter.
     this.lastPeriod.set(id, s.period);
     if (cmp.verdict === 'uncertain') return { code: 'content-uncertain', key, score: cmp.score };
-    return { code: 'valid', key, score: cmp.score, statement: s };
+    return { code: 'valid', key, score: cmp.score, statement: s, checked: cmp.verdict === 'match' };
   }
 }
 
@@ -281,7 +286,11 @@ export class BadgeMachine {
       this.run = this.runKey === id ? this.run + 1 : 1;
       this.runKey = id;
       const identity = { name: outcome.key.name, kind: outcome.key.kind, label: outcome.key.label };
-      if (this.run >= this.policy.consecutiveForGreen) {
+      // Green needs the full run of validly signed statements, and the newest one must
+      // also have had its pictures compared. Only the very first statement of a stream
+      // can be unchecked (its pictures predate the verifier), so in steady state every
+      // statement behind a green badge has been compared.
+      if (this.run >= this.policy.consecutiveForGreen && outcome.checked) {
         this.everGreen = true;
         this.redHold = 0;
         this.lastRed = null;
