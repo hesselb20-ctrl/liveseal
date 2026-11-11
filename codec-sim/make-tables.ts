@@ -206,8 +206,22 @@ for (const [file, tag] of [['channel-impair.jsonl', 'light'], ['channel-impair2.
     tables['browser-genuine'] = md(['Codec', 'Target', 'Measured', 'Encoded size', 'Path', 'Periods', 'Time to green', 'Green after first green', 'Seal found (Y / Cb / Cr)'],
       runs.filter((r) => r.attack === 'none').map((r) => [String(r.codec).replace('video/', ''), `${r.targetKbps} kbps`, `${r.measuredKbps} kbps`, r.size, r.path ?? '', r.periods,
         r.timeToGreenMs >= 0 ? `${(r.timeToGreenMs / 1000).toFixed(1)} s` : 'never', `${Math.round(100 * r.greenAfterFirst)}%`, (r.meanAmplitude as number[]).join(' / ')]));
-    tables['browser-attacks'] = md(['Attack in the lab', 'Codec', 'Badge per period (a amber, g green, r red)', 'Green periods after the attack began'],
-      runs.filter((r) => r.attack !== 'none').map((r) => [r.attackLabel ?? r.attack, String(r.codec).replace('video/', ''), '`' + r.levels + '`', r.greenAfterAttack ?? 'n/a']));
+    tables['browser-attacks'] = md(['Attack in the lab', 'Badge per period before the attack', 'Badge per period after it began (a amber, g green, r red)', 'Green periods after it began'],
+      runs.filter((r) => r.attack !== 'none').map((r) => {
+        const before = String(r.levelsBeforeAttack ?? '');
+        return [r.attackLabel ?? r.attack, '`' + before + '`', '`' + String(r.levels).slice(before.length) + '`', r.greenAfterAttack ?? 'n/a'];
+      }));
+    const bank = (b.bank as Json[]) ?? [];
+    const who: Record<string, string> = { agent: 'Agent with a key signed by the bank', stolen: 'Thief with the bank\'s revoked key', fake: 'Impostor with a key of their own', none: 'Caller with no seal' };
+    if (bank.length) tables['browser-bank'] = md(['Caller', 'Badge every 2 s', 'Final badge'], bank.map((r) => [who[r.who] ?? r.who, '`' + r.levels + '`', String((r.titles as string[]).at(-1) ?? '').replace(/\|/g, ':')]));
+    const checker = (b.checker as Json[]) ?? [];
+    if (checker.length) {
+      tables['browser-checker'] = md(['Recording', 'Report summary', 'Result per period'], checker.map((c) => [
+        String(c.file).startsWith('tampered') ? 'Sealed, second half shows another face under the seal' : 'Sealed, untouched',
+        (c.summary as string[]).join(' '),
+        (c.rows as string[]).map((r) => r.split(' | ')[1]).map((x) => (x === 'valid' ? 'v' : x === 'content-mismatch' ? 'M' : x === 'content-uncertain' ? 'u' : x === 'starting' ? 's' : '?')).join(''),
+      ]));
+    }
     if (b.cost) tables['browser-cost'] = md(['Measure', 'Value'], (b.cost as [string, string][]).map((c) => c));
   }
 }

@@ -1,9 +1,10 @@
 # LiveSeal protocol, version 1
 
-This is the normative description of what is signed, how it is encoded and how
-it is checked. The reference implementation is `core/src/`. Section numbers
-are stable; an implementation that follows this document interoperates with
-the reference.
+This is the normative description of what is signed, how it is encoded, how it
+travels in the picture and how it is checked. The reference implementation is
+`core/src/`. Where a procedure is too long to restate (the pseudo-random
+tables and the parity-check matrix), the reference code is normative and this
+document gives checksums and a test vector (section 12).
 
 All multi-byte integers are big-endian. "CBOR" means RFC 8949 core
 deterministic encoding restricted to unsigned integers, byte strings, text
@@ -42,8 +43,8 @@ A statement is the CBOR array
 | `session` | bstr(3) | The challenge this seal answers. All zero: none. |
 | `key_id` | bstr(4) | Key id of the signing key (section 1). |
 | `period` | uint, < 2^32 | Index of the period in which the statement is transmitted. |
-| `face_box` | bstr(4) | `x, y, w, h` of the face in the digested frames, each in 1/256 of the frame width or height. All zero: no face found. |
-| `digest` | bstr(1..64) | Content digest of the frames of period `period - 1` (section 6). |
+| `face_box` | bstr(4) | `x, y, w, h` of the face in the digested frames, each in 1/256 of the frame width or height. |
+| `digest` | bstr(32) | Content digest (section 6) of the 2 seconds that end 250 ms before the period starts. |
 | `challenge` | bstr(0) or bstr(3) | A challenge the sender issues to its peer (section 5), or empty. |
 
 The signature is Ed25519 over
@@ -53,30 +54,34 @@ The signature is Ed25519 over
 ```
 
 The **wire form** embedded in the video is the same array with the 64-byte
-signature appended as an eighth element:
+signature appended as an eighth element. It is 122 bytes without a challenge
+and 125 with one.
+
+## 4. Channel frame and error correction
 
 ```
-[ version, session, key_id, period, face_box, digest, challenge, signature ]
-```
-
-## 4. Channel frame
-
-The wire form is wrapped for transmission:
-
-```
-data     = length(1) || wire || zero padding || CRC-32(4)
-codeword = data || Reed-Solomon parity
+data  = length(1) || wire || zero padding || CRC-32(4)        exactly 144 bytes
 ```
 
 * `length` is the number of wire bytes.
 * The CRC-32 (IEEE 802.3, as in zlib) covers `length`, `wire` and the padding.
-* Reed-Solomon is over GF(2^8) with primitive polynomial `0x11d`, generator
-  element 2 and first consecutive root 2^0, systematic, shortened.
-* Codeword length and parity count are fixed by the channel profile
-  (section 7).
+* A period with no statement to send carries a frame with `length` 0.
 
-A receiver MUST treat a codeword that fails Reed-Solomon decoding, fails the
-CRC, or has non-zero padding as "seal unreadable". Such a codeword MUST NOT
+The 1152 data bits (most significant bit of each byte first) are encoded with
+a systematic repeat-accumulate LDPC code into 6048 bits:
+
+* Parity-check matrix `H = [A | D]` with 4896 checks. `D` is dual-diagonal:
+  check `i` contains parity bits `i` and `i - 1`. `A` has 4 ones per column,
+  placed by the deterministic procedure `makeLdpc(6048, 1152, 0x1d9c, 4)` in
+  `core/src/ldpc.ts`.
+* Encoding: `s = A * u`, then `p[0] = s[0]`, `p[i] = p[i-1] xor s[i]`. The
+  codeword is `u || p`.
+* Interleaving: code bit `i` is sent as channel bit `perm[i]`, where `perm` is
+  the Fisher-Yates shuffle of `0..6047` driven by the generator of section 7.4
+  seeded with `0x1e4f` (`j = next() mod (i + 1)` for `i` from 6047 down to 1).
+
+A receiver MUST treat a frame that does not decode to a valid codeword, fails
+the CRC, or has non-zero padding as "seal unreadable". Such a frame MUST NOT
 be passed to the signature check.
 
 ## 5. Challenge
@@ -99,27 +104,120 @@ additionally rejected by the freshness rule in section 8.
 
 ## 6. Content digest
 
-Specified in [the digest section of EVALUATION.md](EVALUATION.md) together
-with the measurements that selected it; the reference implementation is
-`core/src/digest.ts`.
+### 6.1 Input
+
+Every frame is reduced to a 320 x 180 luma image by area averaging (luma is
+`0.299 R + 0.587 G + 0.114 B` when the source is RGB). Both ends keep these
+reduced frames with their times.
+
+For the statement transmitted in the period that starts at `S` (ms), the
+digest window starts at `W = S - 2250`. It holds 8 **snapshots**; snapshot `s`
+is centred at `W + (s + 0.5) * 250` and is the average of all reduced frames
+within 55 ms of that centre, or the nearest frame if it lies within 130 ms.
+
+### 6.2 Face hash (snapshots 0, 2, 4, 6; 48 bits each)
+
+1. Convert the face box to pixels of the reduced image: multiply by 320/256
+   and 180/256, round, force width and height to at least 8, clamp to the
+   image.
+2. Resample the box to 32 x 32 by area averaging.
+3. Subtract the mean; divide by `sqrt(variance + 1)`.
+4. Average into a 6 x 6 grid of blocks: pixel `(x, y)` belongs to block
+   `(floor(6x/32), floor(6y/32))`.
+5. Emit features in this order until 48 are produced: for `y` in 0..5, for
+   `x` in 0..4: `b[y][x+1] - b[y][x]`, then (if `y < 5`) `b[y+1][x] - b[y][x]`.
+6. A bit is 1 where the feature is positive.
+
+### 6.3 Frame hash (snapshots 1, 5; 32 bits each)
+
+1. Reduce the snapshot to 64 x 36 by area averaging, then to a 16 x 16 grid of
+   block means as in step 4 above.
+2. Normalise as in step 3.
+3. Take the two-dimensional DCT-II and keep the 32 lowest-frequency
+   coefficients other than DC, ordered by `u + v` ascending and then `u`
+   ascending (`u` vertical).
+4. A bit is 1 where the coefficient is positive.
+
+### 6.4 Layout and comparison
+
+The digest is the 4 face hashes followed by the 2 frame hashes, most
+significant bit first: 32 bytes.
+
+The verifier computes the same features from the frames it received and, for
+each hash, the **weighted distance**: with `r` the root mean square of its own
+features, feature `i` has weight `min(1, |f_i| / (0.5 r))`; the distance is
+the weight of the disagreeing bits divided by the total weight. Distances are
+averaged over the snapshots of each kind. A snapshot whose crop (face) or
+thumbnail (frame) has a standard deviation below 5 levels is left out: there
+is nothing in it to compare.
+
+| Verdict | Condition |
+|---|---|
+| mismatch | face distance >= 0.085 or frame distance >= 0.12 |
+| match | face distance <= 0.055 and frame distance <= 0.05 and mean face weight >= 0.5 |
+| unobserved | none of the snapshots has a frame (the window predates the verifier) |
+| uncertain | anything else, including fewer than 2 usable face snapshots |
 
 ## 7. Channel modulation
 
-Specified in [the channel section of EVALUATION.md](EVALUATION.md) together
-with the measurements that selected it; the reference implementation is
-`core/src/modem.ts`.
+### 7.1 Grid, planes and time
+
+* The picture is a grid of 32 x 18 cells, in each of three planes: Y, Cb, Cr
+  (BT.601). Cell `(x, y)` of plane `p` has index `p * 576 + y * 32 + x`.
+* A period has 8 slots of 250 ms. During a slot every cell is offset by
+  `+a` or `-a`, where `a` is the plane's amplitude in 8-bit limited-range
+  units: 2 for Y and 3 for Cb and Cr ("light": 1.5 and 2).
+* At the start of a slot the offset cross-fades from the previous slot's
+  value over 34 ms with `3t^2 - 2t^3`.
+* Within a cell the offset is constant except for the outer 10% on each side,
+  where it blends into the neighbouring cell with the same curve.
+
+### 7.2 Pilots and data cells
+
+Cell `(x, y)` of plane `p` is a **pilot** when `(x + 3y + 3p) mod 8 = 0`;
+there are 216. All other cells are **data cells**, 1512 in total, taken plane
+by plane and row by row, with odd rows right to left.
+
+### 7.3 Bit mapping
+
+Channel bit `i` (section 4) travels in data cell `floor(i / 4)` as slot pair
+`i mod 4`, that is slots `2 (i mod 4)` and `2 (i mod 4) + 1`. With
+`b = bit xor scramble[i]`: `b = 0` is sent as `(+a, -a)` and `b = 1` as
+`(-a, +a)`.
+
+### 7.4 Public pseudo-random tables
+
+Generator: 32-bit xorshift, `x ^= x << 13; x ^= x >>> 17; x ^= x << 5`, each
+step truncated to 32 bits; `next()` returns the new `x`.
+
+Seeded with `0x4c535031`:
+
+1. For each pilot in cell order: start from `[+1, +1, +1, +1, -1, -1, -1, -1]`
+   and shuffle with `j = next() mod (i + 1)` for `i` from 7 down to 1. The
+   result is that pilot's sign in slots 0..7.
+2. Then for each of the 6048 channel bits in order:
+   `scramble[i] = (next() >>> 7) & 1`.
+
+### 7.5 Receiver (informative)
+
+The reference receiver averages the centre of every cell, searches for the
+period start that maximises the correlation of the pilots with their
+sequences (a seal is "present" at a mean correlation of 0.3 or more in the
+best plane), estimates amplitude and noise per plane from the pilots, forms a
+soft value for every bit from the difference of its two slots, and decodes
+with belief propagation.
 
 ## 8. Verification
 
 For each period the verifier evaluates the following in order and stops at
-the first rule that applies. "Amber" and "red" refer to the period outcome;
-the badge rules follow in section 9.
+the first rule that applies.
 
 | # | Condition | Outcome |
 |---|---|---|
 | 1 | No pilot pattern detected | amber `no-seal` |
 | 2 | Pilots detected, frame not decodable (section 4) | amber `unreadable` |
-| 3 | Wire bytes are not a well-formed statement | amber `malformed` |
+| 3 | The frame is empty (`length` 0): the sender has no statement yet | amber `starting` |
+| 3a | Wire bytes are not a well-formed statement | amber `malformed` |
 | 4 | `version` is not 1 | amber `unsupported-version` |
 | 5 | No pinned key has this `key_id` | amber `unknown-key` |
 | 6 | The signature verifies under none of the pinned keys with this `key_id` | red `bad-signature` |
@@ -129,19 +227,20 @@ the badge rules follow in section 9.
 | 10 | A challenge is active and `session` differs from it | red `wrong-session` |
 | 11 | `abs(now - (period + 1) * 2 s)` exceeds 30 s without a challenge, or 120 s with one | red `stale` |
 | 12 | `period` is not greater than the last accepted period of this key | red `replayed` |
-| 13 | Digest comparison says mismatch | red `content-mismatch` |
-| 14 | Digest comparison says uncertain | amber `content-uncertain` |
-| 15 | otherwise | `valid` |
+| 13 | Digest verdict is mismatch, for the second consecutive compared period of this key | red `content-mismatch` |
+| 14 | Digest verdict is mismatch for the first time, or uncertain | amber `content-uncertain` |
+| 15 | Digest verdict is unobserved | `valid`, content not checked |
+| 16 | Digest verdict is match | `valid`, content checked |
 
-Rules 6 to 8 are applied after the signature has been verified against the
-candidate keys, so a statement can only be attributed to a key that actually
-signed it. The last accepted period (rule 12) advances only for outcomes 14
-and 15.
+Rules 7 and 8 are applied after the signature has been verified, so a
+statement is only ever attributed to a key that signed it. The last accepted
+period (rule 12) advances for outcomes 14 to 16. A match resets the mismatch
+count of rule 13.
 
 ## 9. Badge
 
-* **Green** after 2 consecutive `valid` outcomes from the same key. Any other
-  outcome ends green immediately.
+* **Green** after 2 consecutive `valid` outcomes from the same key, the latest
+  of which is content-checked. Any other outcome ends green immediately.
 * **Red** on any red outcome. Red is held until green is re-earned, or for 5
   further periods without a new red outcome, whichever comes first.
 * **Amber** otherwise. Amber is flagged as a strong warning when the call was
@@ -172,7 +271,9 @@ and waits for explicit confirmation.
 
 ## 11. Organisation key file
 
-An organisation publishes `https://<host>/.well-known/liveseal.json`:
+An organisation publishes `https://<host>/.well-known/liveseal.json`, served
+with `Access-Control-Allow-Origin: *` so that verifiers on other origins can
+read it:
 
 ```json
 {
@@ -205,3 +306,34 @@ An organisation publishes `https://<host>/.well-known/liveseal.json`:
   file is served from below a path (`host/some/path/.well-known/liveseal.json`)
   the locator is `host/some/path`, shown in full and marked as path-scoped:
   only a file at the root of a host proves control of that host.
+
+## 12. Checksums and test vector
+
+Each checksum is the first 8 bytes of the SHA-256 of the table stored as
+little-endian 32-bit integers (pilot cells, data cells, LDPC check lists) or
+as one byte per entry (pilot signs as signed bytes, scramble bits, frame
+bits). `core/test/vectors.test.ts` checks all of them.
+
+| Table | Entries | Checksum |
+|---|---|---|
+| Pilot cell indexes | 216 | `b47df07fe405e751` |
+| Pilot signs (pilot x slot) | 1728 | `5fdd631c6d03115e` |
+| Data cell indexes | 1512 | `f3045ab9c23baa18` |
+| Scramble bits | 6048 | `8d2808179d83f886` |
+| LDPC: the 4 checks of each data bit | 4608 | `82413590e29a32e8` |
+| Channel bits of a frame with `length` 0 | 6048 | `cdbd1f8158b6858d` |
+
+Statement test vector. Secret key: 32 bytes of `0x07`. Public key
+`ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c`, key id
+`c1c3dc95`. Fields: version 1, session `010203`, period 900000000, face box
+`4d1f669a`, digest bytes `d[i] = (7 i) mod 256` for `i` in 0..31, no
+challenge. Wire form (122 bytes):
+
+```
+88014301020344c1c3dc951a35a4e900444d1f669a582000070e151c232a31383f464d54
+5b626970777e858c939aa1a8afb6bdc4cbd2d9405840c52780e78c3eb75a3019e8629bc0
+7bf116342dbcc0db85ac0e2f375b238b09df8857eeced354694cc51f55d04a20972f94b6
+434d358bb9daf1e37e660a3e4200
+```
+
+Channel bits of that frame: checksum `04521ef9a97071c9`.

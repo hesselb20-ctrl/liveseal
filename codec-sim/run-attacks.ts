@@ -14,7 +14,7 @@
 //   T6 revoked     seals with a key the owner has revoked
 //   T7 downgrade   sends no seal while claiming to be a contact who seals
 //
-// Usage: node codec-sim/run-attacks.ts [shard] [shards]
+// Usage: node codec-sim/run-attacks.ts [shard] [shards] [groups]
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -192,6 +192,8 @@ async function run(clip: string, c: Case, codecName: string, codec: CodecConfig,
 
 const shard = Number(process.argv[2] ?? 0);
 const shards = Number(process.argv[3] ?? 1);
+// optional third argument: only these groups, for example 'must,genuine'
+const only = process.argv[4] ? new Set(process.argv[4].split(',')) : null;
 const file = join(RESULTS, 'attacks.jsonl');
 const done = new Set<string>();
 if (existsSync(file)) {
@@ -202,6 +204,7 @@ let index = 0;
 let ran = 0;
 for (const clip of FACE_CLIPS) {
   for (const c of cases(clip)) {
+    if (only && !only.has(c.group)) continue;
     for (const [codecName, codec] of CODECS) {
       if ((c.group === 'limit' || c.group === 'process') && codecName !== 'vp8dn-600' && codecName !== 'h264-600') continue;
       const key = `${clip}|${c.threat}|${c.label}|${attackName(c.picture)}|${codecName}`;

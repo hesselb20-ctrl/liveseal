@@ -69,7 +69,7 @@ function summarise(): void {
     lines.push(`${valid} of ${total} periods carry a valid seal${signers.length ? ` from ${signers.join(' and ')}` : ''}.`);
     if (bad.length) lines.push(`${bad.length} period${bad.length === 1 ? '' : 's'} failed a check (${[...new Set(bad.map((b) => b.result))].join(', ')}): the first at ${bad[0].atSeconds.toFixed(1)} s.`);
     const other = total - valid - bad.length;
-    if (other) lines.push(`${other} period${other === 1 ? ' has' : 's have'} no readable seal.`);
+    if (other) lines.push(`${other} period${other === 1 ? '' : 's'} could not be confirmed (no readable seal, or a picture too far from the signed one to be sure).`);
   }
   $('summary').replaceChildren(...lines.map((t) => Object.assign(document.createElement('p'), { textContent: t })));
   $<HTMLButtonElement>('download').disabled = total === 0;

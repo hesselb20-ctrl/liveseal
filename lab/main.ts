@@ -275,9 +275,11 @@ async function autoRun(): Promise<void> {
   window.liveseal = { done: false };
   await start();
   if (!running) { window.liveseal = { done: true, error: $('attack-note').textContent }; return; }
+  let attackStart = -1;
   if (params.get('attack')) {
     // let the genuine call reach green first, then attack
     await new Promise((resolve) => setTimeout(resolve, Number(params.get('attackAfter') ?? 12) * 1000));
+    attackStart = reports.length;
     setAttack(params.get('attack') as Attack);
   }
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -294,6 +296,9 @@ async function autoRun(): Promise<void> {
     strength: $<HTMLSelectElement>('strength').value,
     path: pathNote || 'canvas sealer + in-thread verifier',
     attack,
+    // The report that arrives right after the switch still describes pictures sent before it.
+    levelsBeforeAttack: attackStart >= 0 ? reports.slice(0, attackStart + 1).map((x) => x.badge.level[0]).join('') : undefined,
+    greenAfterAttack: attackStart >= 0 ? reports.slice(attackStart + 1).filter((x) => x.badge.level === 'green').length : undefined,
     periods: reports.length,
     codes: reports.map((x) => x.outcome.code + (x.outcome.code === 'valid' && !x.outcome.checked ? '*' : '')),
     levels: reports.map((x) => x.badge.level[0]).join(''),

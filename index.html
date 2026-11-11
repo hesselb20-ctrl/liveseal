@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LiveSeal: check who is really on a video call</title>
+  <meta name="description" content="Open-source software that hides a cryptographic seal in live video, so the other side of a call can check it comes from a device they trust.">
+  <meta name="theme-color" content="#0e0f11">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="stylesheet" href="shared/ui.css">
+  <style>
+    .hero { padding: 64px 0 28px; }
+    .states { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .state { border-radius: var(--radius); padding: 18px; border: 2px solid; background: var(--surface); }
+    .state svg { width: 30px; height: 30px; display: block; margin-bottom: 8px; }
+    .state.g { border-color: #00a878; } .state.g svg { color: #00a878; }
+    .state.a { border-color: #f0b323; } .state.a svg { color: #f0b323; }
+    .state.r { border-color: #e8551a; } .state.r svg { color: #e8551a; }
+    .cols { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .cols ul { margin: 0; padding-left: 1.15em; } .cols li { margin-bottom: 0.5em; }
+    .steps { counter-reset: step; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .steps > div::before { counter-increment: step; content: counter(step); display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+      background: var(--accent); color: var(--accent-text); font-weight: 700; margin-bottom: 10px; }
+    figure { margin: 0; } figure img { width: 100%; border-radius: var(--radius); border: 1px solid var(--line); display: block; }
+    figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="./" aria-current="page">LiveSeal</a>
+    <a href="lab/">Lab</a>
+    <a href="sender/">Camera</a>
+    <a href="verifier/">Verify a screen</a>
+    <a href="verifier/checker.html">Check a recording</a>
+    <a href="demo-bank/">Demo bank</a>
+  </nav>
+  <main>
+    <section class="hero">
+      <h1>Check who is really on the video call.</h1>
+      <p class="lead">A real-time face swap can now pass as your bank or your mother. LiveSeal does not try to spot the fake. It lets the real person's device prove itself, with a seal hidden in the picture that a clone cannot make.</p>
+      <p class="note"><strong>Research preview.</strong> It has been measured in a simulator with real video codecs and in a browser loop-back call. It has not been tested on a real call between two devices, and on flat backgrounds the seal can be seen. It proves which device sent the picture, not who is sitting in front of it, and it does not cover the sound. <a href="#limits">The limits in full</a>.</p>
+      <div class="row" style="margin-top:18px">
+        <a class="button primary" href="lab/">Try it in this browser</a>
+        <a class="button" href="#how">How it works</a>
+      </div>
+    </section>
+
+    <section aria-labelledby="states-h">
+      <h2 id="states-h">Three answers, always in words as well as colour</h2>
+      <div class="states">
+        <div class="state g">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="currentColor"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>Verified: Mum</h3>
+          <p class="muted">The picture carries a fresh seal from the key you paired with her, and it is the picture her device sealed.</p>
+        </div>
+        <div class="state a">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2 22.6 21H1.4z" fill="currentColor"/><path d="M12 9v5.5" stroke="#1b1300" stroke-width="2.3" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.3" fill="#1b1300"/></svg>
+          <h3>Not verified</h3>
+          <p class="muted">No seal, or one that cannot be read. On its own this means nothing. If Mum normally seals her calls, you are told so, plainly.</p>
+        </div>
+        <div class="state r">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.9 1.5h8.2l5.9 5.9v8.2l-5.9 5.9H7.9L2 15.6V7.4z" fill="currentColor"/><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <h3>Warning</h3>
+          <p class="muted">A seal is there and fails a check: wrong signature, an old recording, another call, or a picture that is not the one that was sealed.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="demo-h">
+      <h2 id="demo-h">Watch a face swap get flagged</h2>
+      <div class="grid two">
+        <figure><img src="docs/media/lab-verified.jpg" alt="Lab page: the receiver's picture carries a green badge reading Verified: Demo caller." loading="lazy"><figcaption>A genuine sealed call in the lab: verified.</figcaption></figure>
+        <figure><img src="docs/media/lab-swapped.jpg" alt="Lab page: another face has been pasted over the caller under the copied seal, and the badge is red, reading Warning: picture does not match." loading="lazy"><figcaption>Another face pasted in under a perfectly copied seal: flagged within one or two seal periods.</figcaption></figure>
+      </div>
+      <p class="muted" style="margin-top:10px">These are screenshots of the <a href="lab/">lab</a>, which runs the same thing live in your browser with a drawn stand-in or your own camera.</p>
+    </section>
+
+    <section id="how" aria-labelledby="how-h">
+      <h2 id="how-h">How it works</h2>
+      <div class="steps">
+        <div class="card"><h3>The caller's device signs</h3><p class="muted">Every two seconds it signs a short statement: this key, now, for this call, and a fingerprint of the pictures it just sent.</p></div>
+        <div class="card"><h3>The statement rides in the picture</h3><p class="muted">Tiny brightness and colour shifts in large blocks carry it through the call app's video compression. It works with any app that shows video.</p></div>
+        <div class="card"><h3>Your device checks</h3><p class="muted">It reads the statement out of the pixels, checks the signature against a key you already trust, and compares the pictures it got with the ones that were signed.</p></div>
+      </div>
+      <p style="margin-top:14px">A clone has no key, so it cannot sign. A recording is too old. And a genuine seal copied onto other pictures no longer matches them.</p>
+    </section>
+
+    <section id="limits" aria-labelledby="limits-h">
+      <h2 id="limits-h">What LiveSeal can and cannot prove</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>It can show</h3>
+          <ul>
+            <li>that the picture was sealed by a device holding a key you paired with, or a key an organisation publishes on its own web address;</li>
+            <li>that the seal was made in the last few seconds, and for this call if you ask for a code;</li>
+            <li>that the person in the picture has not been swapped for someone else since it was sealed.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>It cannot show</h3>
+          <ul>
+            <li>that an unsealed call is fake. No seal means "unknown", nothing more.</li>
+            <li>anything about the <strong>sound</strong>. A real sealed picture with a cloned voice over it stays green.</li>
+            <li>small edits. Changing only the mouth of a genuine sealed stream was <strong>not caught</strong> in testing.</li>
+            <li>who is holding the device. A stolen unlocked phone seals just as well until its key is revoked.</li>
+            <li>anything when the caller's own device is compromised, or when a real person chooses to lie.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="status-h">
+      <h2 id="status-h">Where it stands</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Question</th><th>Answer today</th></tr></thead>
+          <tbody>
+            <tr><td>Does the seal survive call compression?</td><td><span class="pill ok">simulator</span> Yes at 600 kbps and above for VP8, VP9, H.264 and AV1 at 640x360. Not for VP8 at 300 kbps, and not at 720p below 1 Mbps.</td></tr>
+            <tr><td>Is a swapped face caught?</td><td><span class="pill ok">simulator</span> <span class="pill ok">browser loop-back</span> Yes for a replaced face or person, with simple stand-ins for a face swap. A real face-swap model was not tested.</td></tr>
+            <tr><td>Does it work on a real call?</td><td><span class="pill bad">not tested</span> No call between two devices has been made yet.</td></tr>
+            <tr><td>Can people see the seal?</td><td><span class="pill bad">yes, on flat backgrounds</span> Look closely at the wall in the screenshots above: the faint mosaic of coloured blocks is the seal. A real camera picture hides it better; how much has not been measured. There is a <a href="abtest/">blind test page</a>.</td></tr>
+            <tr><td>Does it work from a hand-held phone?</td><td><span class="pill warn">mostly not</span> A moving camera defeats this version.</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin:12px 0 0">Every number behind this table is in the evaluation document in the repository.</p>
+      </div>
+    </section>
+
+    <section aria-labelledby="use-h">
+      <h2 id="use-h">Use it</h2>
+      <div class="grid three">
+        <div class="card stack"><h3>Seal your camera</h3><p class="muted">For calls in the browser, the extension. For Zoom, Teams or WhatsApp on the desktop, the camera page plus a virtual camera.</p><a class="button" href="sender/">Open the camera page</a></div>
+        <div class="card stack"><h3>Check a call</h3><p class="muted">The extension badges each person's picture. For any other app, point a phone at the screen or capture the window.</p><a class="button" href="verifier/">Verify a screen</a></div>
+        <div class="card stack"><h3>Check a recording</h3><p class="muted">Drop in a recorded call and get a report for every two seconds of it.</p><a class="button" href="verifier/checker.html">Check a recording</a></div>
+        <div class="card stack"><h3>For organisations</h3><p class="muted">Publish your keys on your own web address so customers can check that a call is really from you.</p><a class="button" href="demo-bank/">See the demo bank</a></div>
+      </div>
+    </section>
+  </main>
+  <footer>LiveSeal is free and open source (MIT). No accounts, no servers, no tracking: everything runs on your device.</footer>
+</body>
+</html>

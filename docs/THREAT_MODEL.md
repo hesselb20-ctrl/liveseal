@@ -48,9 +48,11 @@ a strong warning (see T7).
 
 Three independent checks fail:
 
-* the signed timestamp is outside the freshness window;
+* the signed period index, which is the sender's clock in 2-second steps, is
+  outside the freshness window (30 seconds without a challenge);
 * the signed session does not equal the challenge the verifier just issued;
-* the period counter does not continue from the verifier's last observation.
+* the period index is not greater than the last one the verifier accepted
+  from that key.
 
 The recorded pictures themselves would match their digest, so freshness and
 session are the checks that matter here. The verifier reports "this seal was
@@ -66,6 +68,13 @@ the challenge to the genuine person) the session are all valid. The digest is
 not: it was computed from the genuine frames, the verifier computes it from
 the frames it actually receives, and the two differ. The verifier reports "the
 picture does not match what was sealed".
+
+The first mismatching period is shown as amber and the second as red. The
+delay of one period exists because a burst of bad picture quality on a
+genuine call can produce a single mismatch; it gives the attacker nothing,
+since neither state is green. In the attack suite every relay run with a
+replaced face or person ended without a single green period (EVALUATION.md,
+section 6.1).
 
 What remains, stated honestly:
 
@@ -83,9 +92,18 @@ What remains, stated honestly:
   content check still fails for any modified video, so the outcome stays red.
 * **Edits below the digest's resolution.** The digest tolerates what a codec
   does to a picture, so an edit that is no bigger than codec damage can pass.
-  EVALUATION.md measures this with graded edits (whole-face replacement,
-  local warps, mouth-only replacement) and reports the detection rate for
-  each, including the ones that are not caught.
+  This was measured, and the result is not comfortable: replacing only the
+  mouth region of a genuine sealed stream stayed green in most periods, and
+  so did bending the face by 3% of its size. A 6% bend was mostly caught and
+  a 12% bend always (EVALUATION.md, sections 3.4 and 6.2). An attacker who
+  relays a genuine live stream and re-animates only the lips is therefore
+  **not** stopped by this version. Binding the mouth more tightly (landmark
+  motion, or a finer hash of that region) and binding the audio are the
+  two changes that would close this.
+* **A real face-swap model was not tested.** The "replaced face" attacks are
+  made by pasting and blending, not by a neural network. A good face swap
+  keeps pose, lighting and expression, and may land closer to the genuine
+  picture than a pasted face does.
 
 ### T4. Re-encoding, cropping, scaling, re-filming
 
@@ -98,6 +116,12 @@ is a true green, a marginal comparison is amber. Processing cannot create a
 signature, so it cannot create a green for content the key holder did not
 send. A decode error cannot produce red either: the CRC rejects it first.
 
+Processing that moves the picture (a crop, for instance) changes what is
+inside the signed face box. If the seal still decodes, the comparison can
+then fail and the badge can turn red although nobody attacked the call.
+That is a false alarm, not a false green; EVALUATION.md, section 6.3, shows
+how often each kind of processing ends in each colour.
+
 ### T5. Attacker seals with their own key and claims to be someone else
 
 *Outcome: the badge names the key's owner, not the claimed person.*
@@ -105,9 +129,10 @@ send. A decode error cannot produce red either: the CRC rejects it first.
 The verifier ignores display names. It looks up the key id among pinned
 contacts and organisation keys. An attacker's key is either unknown ("sealed
 by a key you have not verified", amber) or pinned under the attacker's own
-name, in which case the green badge shows that name. Key ids are short, so a
-colliding key id is possible; the signature check then fails under the pinned
-key and the verifier reports an unknown key, not a verified one.
+name, in which case the green badge shows that name. Key ids are short (32
+bits), so an attacker can grind out a key whose id collides with a contact's.
+The signature then fails under the pinned key and the verifier shows red: "this
+seal claims to come from Mum but its signature is wrong".
 
 ### T6. Lost device or stolen key
 

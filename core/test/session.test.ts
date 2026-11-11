@@ -28,7 +28,7 @@ test('genuine call: green within three decoded periods and it stays green', asyn
   const green = reports[firstGreen].badge;
   assert.equal(green.title, 'Verified: Mum');
   // the sender starts with no history, so its first period carries pilots only
-  assert.ok(['malformed', 'valid'].includes(reports[0].outcome.code));
+  assert.ok(['starting', 'valid'].includes(reports[0].outcome.code));
 });
 
 test('T1 no seal: amber, never green', async () => {
@@ -42,7 +42,7 @@ test('T1 no seal: amber, never green', async () => {
 test('T2 replay: a recorded sealed call played later is red', async () => {
   const { mum, directory } = await mumAndDirectory();
   const reports = await runCall({ signer: mum, directory, seconds: 12, scene: new SyntheticScene(1), receiverDelayMs: 3_600_000 });
-  const signed = reports.filter((r) => r.outcome.code !== 'malformed');
+  const signed = reports.filter((r) => r.outcome.code !== 'starting');
   assert.ok(signed.length >= 3);
   assert.ok(signed.every((r) => r.outcome.code === 'stale'), codes(reports).join(','));
   assert.ok(!levels(reports).includes('green'));
@@ -83,7 +83,7 @@ test('T5 attacker seals with an unpinned key: amber, and the badge names no one'
   const { directory } = await mumAndDirectory();
   const attacker = (await createSigner()).signer;
   const reports = await runCall({ signer: attacker, directory, seconds: 12, scene: new SyntheticScene(2) });
-  const signed = reports.filter((r) => r.outcome.code !== 'malformed');
+  const signed = reports.filter((r) => r.outcome.code !== 'starting');
   assert.ok(signed.length >= 3);
   assert.ok(signed.every((r) => r.outcome.code === 'unknown-key'));
   assert.ok(reports.every((r) => r.badge.level === 'amber' && r.badge.identity === undefined));
@@ -154,7 +154,7 @@ test('challenge: amber until the caller answers, green after, red for a wrong an
   });
   const c = codes(reports);
   const firstAnswered = c.indexOf('valid');
-  assert.ok(c.slice(0, firstAnswered).every((x) => x === 'awaiting-challenge' || x === 'malformed'), c.join(','));
+  assert.ok(c.slice(0, firstAnswered).every((x) => x === 'awaiting-challenge' || x === 'starting'), c.join(','));
   assert.ok(c.includes('awaiting-challenge'));
   assert.ok(firstAnswered > 2);
   assert.equal(levels(reports).at(-1), 'green');

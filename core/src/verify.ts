@@ -24,6 +24,7 @@ export interface ContentComparison {
 export type PeriodOutcome =
   | { code: 'no-seal' }
   | { code: 'unreadable' }
+  | { code: 'starting' }
   | { code: 'malformed' }
   | { code: 'unsupported-version'; version: number }
   | { code: 'unknown-key'; keyId: Uint8Array }
@@ -108,6 +109,8 @@ export class SealChecker {
 
   async check(input: PeriodInput): Promise<PeriodOutcome> {
     if (!input.wire) return { code: input.pilots ? 'unreadable' : 'no-seal' };
+    // an empty frame: the sender is sealing but has no statement yet (its first two seconds)
+    if (input.wire.length === 0) return { code: 'starting' };
     const signed = parseStatement(input.wire);
     if (!signed) return { code: 'malformed' };
     const s = signed.statement;
@@ -245,6 +248,8 @@ function amberText(o: PeriodOutcome): { title: string; detail: string } {
         title: 'Not verified',
         detail: 'A seal is present but cannot be read. The video may be too compressed.',
       };
+    case 'starting':
+      return { title: 'Checking seal', detail: 'A seal is starting up. The first statement arrives in a moment.' };
     case 'malformed':
     case 'unsupported-version':
       return {
@@ -355,7 +360,7 @@ export class BadgeMachine {
         strong: true,
       });
     }
-    if (context.expectedName && context.expectedUsuallySeals && outcome.code !== 'awaiting-challenge') {
+    if (context.expectedName && context.expectedUsuallySeals && outcome.code !== 'awaiting-challenge' && outcome.code !== 'starting') {
       return this.set({
         level: 'amber',
         code: outcome.code,

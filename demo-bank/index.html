@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo Bank: an organisation that seals its calls</title>
+  <meta name="description" content="A pretend bank that publishes LiveSeal keys, to show how an organisation proves its video calls.">
+  <link rel="stylesheet" href="../shared/ui.css">
+</head>
+<body>
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="../">LiveSeal</a>
+    <a href="../lab/">Lab</a>
+    <a href="../sender/">Camera</a>
+    <a href="../verifier/">Verify a screen</a>
+    <a href="../verifier/checker.html">Check a recording</a>
+    <a href="./" aria-current="page">Demo bank</a>
+  </nav>
+  <main>
+    <p class="note" style="margin-top:28px"><strong>This is not a real bank.</strong> It is a demonstration of how an organisation can prove its video calls. Its keys are published on purpose and protect nothing.</p>
+    <h1 style="margin-top:24px">Demo Bank seals every video call</h1>
+    <p class="lead">When "your bank" video-calls you, the name and logo on screen prove nothing. Demo Bank publishes its LiveSeal keys on its own web address, so your device can check the call against them.</p>
+
+    <h2>1. The bank publishes its keys</h2>
+    <div class="card stack">
+      <p>The key file lives at a fixed place on the bank's own web address:</p>
+      <p><a id="key-link" class="mono" href="./.well-known/liveseal.json">.well-known/liveseal.json</a></p>
+      <table>
+        <thead><tr><th>Key</th><th>Use</th><th>Status</th></tr></thead>
+        <tbody id="keys"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h2>2. You add the bank once</h2>
+    <div class="card stack">
+      <p>In real use you type the bank's web address into LiveSeal. Here one button does it for this page's own address.</p>
+      <div class="row">
+        <button id="add" class="primary">Add Demo Bank</button>
+        <span id="added" class="muted" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <h2>3. The bank calls you</h2>
+    <p class="muted">Left: what the bank's agent sends. Right: what your device shows. The picture travels through your browser's real call encoder.</p>
+    <div class="grid two">
+      <div class="stage"><canvas id="sent"></canvas><span class="tag">Bank agent</span></div>
+      <div class="stage"><video id="received" muted playsinline></video><span class="tag">Your screen</span><div class="overlay" id="badge-slot"></div></div>
+    </div>
+    <div class="row" id="callers" role="group" aria-label="Who is calling" style="margin-top:14px">
+      <button data-who="agent" class="primary">Agent 042 calls</button>
+      <button data-who="stolen">A thief calls with the bank's stolen key</button>
+      <button data-who="fake">A fake "Demo Bank" calls</button>
+      <button data-who="none">Someone calls with no seal</button>
+    </div>
+    <p id="explain" class="muted" style="margin-top:12px" aria-live="polite">Add the bank first, then start a call.</p>
+
+    <h2>For organisations</h2>
+    <div class="card stack">
+      <p>Create a key pair, keep the private key on the systems your agents call from, and publish the public key in <span class="mono">/.well-known/liveseal.json</span> on your main web address. Issue sub-keys per agent or per team, list a key under <span class="mono">revoked</span> the moment a device is lost, and seal every call: a customer who has added you is warned when a call claiming to be you is not sealed.</p>
+      <p>The file format is in <a href="https://github.com/">docs/PROTOCOL.md</a>, section 11.</p>
+    </div>
+  </main>
+  <footer>Demo Bank does not exist. Everything on this page runs on your device.</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
