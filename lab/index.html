@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LiveSeal lab: a sealed call in one page</title>
+  <meta name="description" content="Run a sealed video call inside your browser, then attack it and watch the badge.">
+  <link rel="stylesheet" href="../shared/ui.css">
+</head>
+<body>
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="../">LiveSeal</a>
+    <a href="./" aria-current="page">Lab</a>
+    <a href="../sender/">Camera</a>
+    <a href="../verifier/">Verify a screen</a>
+    <a href="../verifier/checker.html">Check a recording</a>
+    <a href="../demo-bank/">Demo bank</a>
+  </nav>
+  <main>
+    <h1 style="margin-top:36px">A sealed call in one page</h1>
+    <p class="lead">The left picture is sealed and sent through your browser's real call encoder to the right picture, which verifies it. Then play the attacker.</p>
+    <p class="note">This is a loop-back inside your browser: real encoder and decoder, no network. Nothing leaves this page.</p>
+
+    <div class="grid two" style="margin-top:22px">
+      <section class="stack" aria-label="Caller">
+        <div class="stage"><canvas id="sent"></canvas><span class="tag">Caller sends</span></div>
+        <div class="card stack">
+          <div class="row">
+            <label class="grow">Picture
+              <select id="source">
+                <option value="drawn">Drawn stand-in (no camera)</option>
+                <option value="camera">My camera</option>
+              </select>
+            </label>
+            <label class="grow">Seal
+              <select id="strength">
+                <option value="default">Default</option>
+                <option value="light">Light</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label class="grow">Call codec <select id="codec"></select></label>
+            <label class="grow">Bitrate
+              <select id="kbps">
+                <option value="300">300 kbps</option>
+                <option value="600" selected>600 kbps</option>
+                <option value="1000">1 Mbps</option>
+                <option value="2000">2 Mbps</option>
+              </select>
+            </label>
+          </div>
+          <button id="start" class="primary">Start the call</button>
+        </div>
+      </section>
+
+      <section class="stack" aria-label="Receiver">
+        <div class="stage">
+          <video id="received" muted playsinline></video>
+          <span class="tag">Receiver sees</span>
+          <div class="overlay" id="badge-slot"></div>
+        </div>
+        <div class="card stack">
+          <div class="row" role="group" aria-label="Verification figures">
+            <div class="stat grow"><b id="s-green">–</b><span>time to green</span></div>
+            <div class="stat grow"><b id="s-share">–</b><span>periods green</span></div>
+            <div class="stat grow"><b id="s-rate">–</b><span>measured bitrate</span></div>
+            <div class="stat grow"><b id="s-size">–</b><span>encoded size</span></div>
+          </div>
+          <div class="row">
+            <button id="verify">Verify with a code</button>
+            <span class="words" id="words" aria-live="polite"></span>
+            <label class="row" style="flex-direction:row;align-items:center"><input type="checkbox" id="auto-answer" checked> caller answers automatically</label>
+          </div>
+          <div class="row hidden" id="answer-row">
+            <label class="grow">Caller types the three words<input type="text" id="answer" autocomplete="off" spellcheck="false" placeholder="three words"></label>
+            <button id="answer-go">Answer</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <h2>Play the attacker</h2>
+    <p class="muted">Each button changes what travels between the two pictures. The seal is copied perfectly in every case, which is the best an attacker can do.</p>
+    <div class="row" id="attacks" role="group" aria-label="Attacks">
+      <button data-attack="none" aria-pressed="true">Genuine call</button>
+      <button data-attack="strip">Deepfake with no seal</button>
+      <button data-attack="swap">Swap the face, keep the seal</button>
+      <button data-attack="other">Different person, same seal</button>
+      <button data-attack="replay">Replay a recording</button>
+      <button data-attack="impostor">Seal with someone else's key</button>
+      <button data-attack="revoked" class="danger">Caller's key is revoked</button>
+    </div>
+    <p id="attack-note" class="muted" style="margin-top:12px" aria-live="polite"></p>
+
+    <h2>What the receiver measured</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Period</th><th>Result</th><th>Badge</th><th>Seal strength found (Y, Cb, Cr)</th><th>Bits repaired</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+      <p class="muted" id="cost" style="margin:12px 0 0"></p>
+    </div>
+  </main>
+  <footer>LiveSeal is open source. Everything on this page runs on your device.</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "liveseal": 1,
+  "name": "Demo Bank (not a real bank)",
+  "keys": [
+    {
+      "publicKey": "wZ86V6gyPXaRx2Fzq0HZJGMDmOZIX4zepyz2IV4qJiE",
+      "label": "Customer calls",
+      "validFrom": "2026-01-01T00:00:00Z",
+      "validTo": "2031-01-01T00:00:00Z"
+    }
+  ],
+  "subKeys": [
+    {
+      "publicKey": "SvoGrjyfYbCNzRk5RA2ixAbrKZYXJO0zSWGjFMswBLc",
+      "label": "Agent 042",
+      "issuer": "wZ86V6gyPXaRx2Fzq0HZJGMDmOZIX4zepyz2IV4qJiE",
+      "validFrom": "2026-01-01T00:00:00Z",
+      "validTo": "2031-01-01T00:00:00Z",
+      "signature": "5IGHuiM7UVSyNShHFe_99mbza7c_VdqYe2uQMYjrLEKD9KPSdAz2fry8Msj4GeTEe_WruPrevSVQg2cRiiSgBw"
+    }
+  ],
+  "revoked": [
+    {
+      "publicKey": "3s5c5IteXv4A701pxxxRK58HMyDyqC3PLjnDqnj1b1I",
+      "revokedAt": "2026-06-01T00:00:00Z",
+      "reason": "Laptop reported stolen (demo)"
+    }
+  ]
+}

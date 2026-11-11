@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "types": ["node", "chrome"]
   },
-  "include": ["core", "codec-sim", "sender", "verifier", "extension/src", "shared", "scripts", "site", "vite.config.ts"]
+  "include": ["core", "codec-sim", "sender", "verifier", "lab", "abtest", "demo-bank", "extension/src", "shared", "scripts", "vite.config.ts"]
 }

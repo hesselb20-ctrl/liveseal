@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LiveSeal</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body { width: 380px; font-size: 15px; }
+    main { padding: 14px 14px 18px; }
+    h1 { font-size: 1.3rem; margin: 0 0 8px; }
+    .switch { flex-direction: row; align-items: center; gap: 10px; color: var(--text); font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <main class="stack">
+    <h1>LiveSeal</h1>
+    <section id="welcome" class="stack hidden">
+      <p>Choose the name people will see next to "Verified" when they check your calls.</p>
+      <label>Your name<input type="text" id="name" maxlength="40" placeholder="for example: Mum"></label>
+      <button id="create" class="primary">Create my key</button>
+      <p class="muted">The key is made and kept on this device. There is no account.</p>
+    </section>
+    <section id="main" class="stack hidden">
+      <label class="switch"><input type="checkbox" id="seal"> Seal my camera on call sites</label>
+      <label class="switch"><input type="checkbox" id="verify"> Check other people's video and show a badge</label>
+      <label>Seal strength
+        <select id="strength">
+          <option value="default">Default</option>
+          <option value="light">Light (good connections only)</option>
+        </select>
+      </label>
+      <p class="muted">Active on: <span id="sites"></span>.</p>
+      <div class="row"><button id="enable-site">Enable on this site</button></div>
+      <p class="muted" id="saved" aria-live="polite"></p>
+      <div class="card stack" id="contacts" style="padding:14px"></div>
+    </section>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LiveSeal: verify a screen</title>
+  <meta name="description" content="Point a phone at any screen showing a video call, or capture the call window, and check its LiveSeal.">
+  <meta name="theme-color" content="#0e0f11">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="../shared/ui.css">
+  <style>
+    #quad { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+    #quad polygon { fill: rgba(76, 157, 255, 0.12); stroke: #4c9dff; stroke-width: 0.5; vector-effect: non-scaling-stroke; }
+    #quad circle { fill: #fff; stroke: #0a66d8; stroke-width: 2; vector-effect: non-scaling-stroke; cursor: grab; }
+    #quad circle:focus-visible { outline: none; stroke: #ffb300; stroke-width: 4; }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="../">LiveSeal</a>
+    <a href="../lab/">Lab</a>
+    <a href="../sender/">Camera</a>
+    <a href="./" aria-current="page">Verify a screen</a>
+    <a href="./checker.html">Check a recording</a>
+    <a href="../demo-bank/">Demo bank</a>
+  </nav>
+  <main>
+    <h1 style="margin-top:36px">Verify a screen</h1>
+    <p class="lead">Works with any call app, including ones on a TV or another computer. Point this device's camera at the picture of the person, or capture the call window.</p>
+
+    <div class="grid two">
+      <section class="stack" aria-label="Picture being checked">
+        <div class="stage" id="stage">
+          <video id="view" muted playsinline></video>
+          <svg id="quad" class="hidden" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Corners of the call picture">
+            <polygon points="0,0 100,0 100,100 0,100"></polygon>
+            <circle r="2.2" tabindex="0" role="slider" aria-label="Top left corner"></circle>
+            <circle r="2.2" tabindex="0" role="slider" aria-label="Top right corner"></circle>
+            <circle r="2.2" tabindex="0" role="slider" aria-label="Bottom right corner"></circle>
+            <circle r="2.2" tabindex="0" role="slider" aria-label="Bottom left corner"></circle>
+          </svg>
+          <div class="overlay" id="badge-slot"></div>
+        </div>
+        <div class="card stack">
+          <div class="row">
+            <button id="use-camera" class="primary">Use the camera</button>
+            <button id="use-screen">Capture a window</button>
+            <button id="stop" disabled>Stop</button>
+            <button id="whole">Whole picture</button>
+          </div>
+          <p class="muted" id="hint" aria-live="polite">Drag the four corners onto the corners of the caller's picture. Keep this device still; a stand helps.</p>
+          <p class="note">Filming a screen is the hardest case for the seal. Expect it to work less often than the browser extension, and treat "not verified" here as "could not read", not as proof of anything.</p>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="card stack">
+          <label>Who should this be?
+            <select id="expected"><option value="">I am not sure</option></select>
+          </label>
+          <div class="row">
+            <button id="verify">Verify with a code</button>
+            <button id="clear-code">Clear code</button>
+          </div>
+          <p class="words" id="words" aria-live="polite"></p>
+          <p class="muted" id="words-help"></p>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Time</th><th>Result</th><th>Seal found</th></tr></thead>
+            <tbody id="log"><tr><td colspan="3" class="muted">Nothing checked yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <h2>People and organisations</h2>
+    <div class="card stack" id="contacts"></div>
+  </main>
+  <footer>Everything on this page runs on your device. No video, frames or faces are sent anywhere.</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

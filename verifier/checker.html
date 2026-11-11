@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LiveSeal: check a recording</title>
+  <meta name="description" content="Drop in a recorded call and get a period-by-period LiveSeal verification report.">
+  <link rel="stylesheet" href="../shared/ui.css">
+  <style>
+    #drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 36px 20px; text-align: center; }
+    #drop.over { border-color: var(--accent); background: var(--surface-2); }
+  </style>
+</head>
+<body>
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="../">LiveSeal</a>
+    <a href="../lab/">Lab</a>
+    <a href="../sender/">Camera</a>
+    <a href="./">Verify a screen</a>
+    <a href="./checker.html" aria-current="page">Check a recording</a>
+    <a href="../demo-bank/">Demo bank</a>
+  </nav>
+  <main>
+    <h1 style="margin-top:36px">Check a recording</h1>
+    <p class="lead">Drop in a recorded call. The file is read on this device only and you get a report for every two-second period of it.</p>
+
+    <div class="grid two">
+      <section class="stack">
+        <div id="drop" class="card">
+          <p><strong>Drop a video file here</strong> or</p>
+          <label class="button primary" style="display:inline-flex">Choose a file<input type="file" id="file" accept="video/*" class="sr-only"></label>
+          <p class="muted" style="margin:14px 0 0">The recording is played once at normal speed while it is checked.</p>
+        </div>
+        <div class="stage hidden" id="stage"><video id="video" muted playsinline></video><div class="overlay" id="badge-slot"></div></div>
+        <progress id="progress" value="0" max="1" class="hidden" style="width:100%" aria-label="Checking progress"></progress>
+      </section>
+      <section class="stack">
+        <div class="card stack">
+          <h3>What this report can tell you</h3>
+          <p class="muted">For each period: whether a seal is present, which pinned key signed it, the time the signer's device claimed, and whether the picture matches what was signed.</p>
+          <p class="note">A recording cannot prove when it was made. The time shown is the one written into the seal by the signer's device. To check a seal against a particular person, pair with their key first.</p>
+          <div id="summary" aria-live="polite"></div>
+          <div class="row"><button id="download" disabled>Download report (JSON)</button></div>
+        </div>
+      </section>
+    </div>
+
+    <h2>Period by period</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>At</th><th>Result</th><th>Signed by</th><th>Time in the seal (UTC)</th><th>Picture distance</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="5" class="muted">No recording checked yet.</td></tr></tbody>
+      </table>
+    </div>
+
+    <h2>People and organisations</h2>
+    <div class="card stack" id="contacts"></div>
+  </main>
+  <footer>Everything on this page runs on your device. The recording is not uploaded.</footer>
+  <script type="module" src="./checker.ts"></script>
+</body>
+</html>
