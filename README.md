@@ -2,7 +2,7 @@
 
 **Check who is really on the video call.**
 
-https://github.com/user-attachments/assets/6afa464e-39fb-4264-9c17-da14261b8b50
+https://github.com/user-attachments/assets/8edf0134-fe28-4334-8318-486b7e7f6100
 
 *The tutorial: the idea, how it works and its limits, in a minute and a half,
 without sound. The same file is in the repository as
