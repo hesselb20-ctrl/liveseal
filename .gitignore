@@ -1,0 +1,15 @@
+node_modules/
+dist/
+extension/dist/
+# Test footage, attack videos and simulator scratch files never leave this machine.
+data/
+*.y4m
+*.yuv
+*.ivf
+*.webm
+*.mp4
+!docs/media/*.webm
+!docs/media/*.mp4
+.DS_Store
+Thumbs.db
+*.log
