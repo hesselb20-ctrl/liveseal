@@ -19,7 +19,7 @@ const pattern = new RegExp(`\\b(${TERMS.map((t) => t.replace(/[.*+?^${}()|[\]\\]
 const problems: string[] = [];
 
 for (const file of git(['ls-files', '-z']).split('\0').filter(Boolean)) {
-  if (/\.(png|jpg|jpeg|webp|tflite|wasm|ico)$/i.test(file)) continue;
+  if (/\.(png|jpg|jpeg|webp|mp4|tflite|wasm|ico)$/i.test(file)) continue;
   let text: string;
   try {
     text = readFileSync(file, 'utf8');

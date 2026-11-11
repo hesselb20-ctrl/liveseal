@@ -2,10 +2,17 @@
 
 **Check who is really on the video call.**
 
+[![LiveSeal tutorial: the idea, how it works and its limits, in a minute and a half. Click to watch.](docs/media/tutorial-poster.png)](docs/media/liveseal-tutorial.mp4)
+
+*[Watch the tutorial](docs/media/liveseal-tutorial.mp4): a minute and a half,
+no sound.*
+
 A face and a voice on a video call are no longer proof of anything: real-time
 face swaps and voice clones are good enough to pass as your bank, your boss or
 your mother. LiveSeal takes the opposite approach to "deepfake detectors". It
 does not try to spot the fake. It lets the real person's device prove itself.
+
+![The idea. Mum's device holds a private key that never leaves it, and hides a seal in every picture it sends. Your device knows her public key from pairing once, and checks the seal. A clone can copy her face and her voice. It cannot make her seal.](docs/media/idea.png)
 
 The caller's device hides a small cryptographic seal inside its video
 picture. Your device reads the seal back out of the picture and checks it:
@@ -18,6 +25,8 @@ picture. Your device reads the seal back out of the picture and checks it:
 * **Red, "Warning"**: there is a seal and it fails a check. Wrong signature,
   an old recording, a seal made for another call, or a picture that is not the
   one that was sealed.
+
+![The three answers. Green, "Verified: Mum": a fresh seal from the key you paired with her, on the picture her device sealed. Amber, "Not verified": no seal, or one that cannot be read; on its own this means nothing. Red, "Warning": a seal is there and fails a check.](docs/media/three-answers.png)
 
 Everything runs on your own device. No accounts, no servers, no tracking, and
 no video ever leaves the page that processes it.
@@ -38,6 +47,8 @@ All measurements, including the unflattering ones, are in
 [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## What LiveSeal can and cannot prove
+
+![What LiveSeal can and cannot show. It can show that the picture was sealed by a device holding a key you trust, in the last few seconds, and that the person was not swapped afterwards. It cannot show that an unsealed call is fake, anything about the sound, small edits, or who is holding the device. Measured in a simulator and a browser loop-back, not yet on a real call between two devices.](docs/media/limits.png)
 
 It **can** show that:
 
@@ -72,6 +83,14 @@ to **Lab**. It runs a sealed call inside your browser, with a drawn stand-in
 or your own camera, and lets you play the attacker: remove the seal, swap the
 face, replay a recording, use someone else's key.
 
+| A genuine sealed call in the lab | Another face under a copied seal |
+|---|---|
+| ![Lab page: the receiver's picture carries a green badge reading "Verified: Demo caller".](docs/media/lab-verified.jpg) | ![Lab page: another face has been pasted over the caller under the copied seal, and the badge is red, reading "Warning: picture does not match".](docs/media/lab-swapped.jpg) |
+
+These two are real screenshots. Look closely at the flat wall and you can see
+the seal as a faint mosaic of blocks; that is the "not invisible" row in the
+status table above.
+
 | Page | What it is for |
 |---|---|
 | `lab/` | A sealed call in one page, with attack buttons. |
@@ -81,6 +100,8 @@ face, replay a recording, use someone else's key.
 | `demo-bank/` | A pretend bank that publishes its keys, to show how an organisation proves its calls. |
 | `abtest/` | "Can you see the seal?" A blind test you can take. |
 | `extension/` | Browser extension (Chrome, Edge, Firefox): seals your camera on web call sites and puts a badge on each person's picture. |
+
+![Using LiveSeal in three moves. One: pair once, by scanning each other's code and comparing the safety number. Two: seal your camera, with the browser extension or the camera page plus a virtual camera. Three: check the call, with a badge on each person's picture, a phone pointed at the screen, or the recording checker.](docs/media/how-to-use.png)
 
 ### Pairing
 
@@ -100,6 +121,11 @@ still produce valid seals.
 
 ## How it works, in three steps
 
+![How it works: sign, hide, check. One: every two seconds the caller's device signs a statement: this key, now, this call, these pictures. Two: tiny shifts in large blocks of the picture carry the statement through the call app's compression. Three: your device reads it back and checks the signature, the time and the pictures.](docs/media/how-it-works.png)
+
+In these drawings and in the tutorial the seal is drawn far stronger than it
+is. The real change is 2 to 3 steps out of 255 per block.
+
 1. **The caller's device signs.** Every two seconds it signs a short
    statement with an Ed25519 key: this key, now, for this call, and a
    fingerprint of the pictures it just sent.
@@ -114,6 +140,10 @@ still produce valid seals.
 
 A clone has no key, so it cannot sign. A recording is too old. And a genuine
 seal copied onto other pictures no longer matches them.
+
+![What an attacker gets. A face-swap clone with no key cannot sign, so the call shows "Not verified". A sealed recording played back shows "Warning", because the signed time is too old. A real seal copied onto a swapped face shows "Warning", because the pictures no longer match the signed fingerprint. In the simulator and in the browser loop-back, none of these reached green.](docs/media/attacks.png)
+
+Smaller edits are a known gap: see the status table at the top.
 
 The design is explained in [docs/DESIGN.md](docs/DESIGN.md), the attacks it
 is built against in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), and the
