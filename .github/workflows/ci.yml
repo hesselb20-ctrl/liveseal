@@ -1,4 +1,4 @@
-name: Test and publish the site
+name: Test and build
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,13 +32,16 @@ jobs:
       - run: npm run build
       # the organisation key file lives in a dot-folder; make sure it is in the output
       - run: test -f dist/demo-bank/.well-known/liveseal.json
+      # Publishing the site is off by default. To switch it on: enable Pages for the
+      # repository with "GitHub Actions" as the source, and set the repository
+      # variable PUBLISH_SITE to "true".
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && vars.PUBLISH_SITE == 'true'
         with:
           path: dist
 
-  deploy:
-    if: github.event_name != 'pull_request'
+  publish:
+    if: github.event_name != 'pull_request' && vars.PUBLISH_SITE == 'true'
     needs: build
     runs-on: ubuntu-latest
     environment:

@@ -67,7 +67,7 @@ on a number you already know.
 
 ## Try it
 
-Open the site at <https://hesselb20-ctrl.github.io/liveseal/> (or build it yourself, see below) and go
+Build the site (two commands, see "For developers" below), open it, and go
 to **Lab**. It runs a sealed call inside your browser, with a drawn stand-in
 or your own camera, and lets you play the attacker: remove the seal, swap the
 face, replay a recording, use someone else's key.
@@ -146,6 +146,10 @@ npm run build                 # static site in dist/, extension in extension/dis
 
 Load `extension/dist/` as an unpacked extension (Chrome, Edge) or as a
 temporary add-on (Firefox).
+
+The site is a folder of static files (`dist/`) and can be served from any
+static host. The included workflow can publish it to GitHub Pages; that is
+switched off by default (see the note in `.github/workflows/ci.yml`).
 
 Reproducing the measurements:
 
