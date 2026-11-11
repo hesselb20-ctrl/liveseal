@@ -2,10 +2,11 @@
 
 **Check who is really on the video call.**
 
-[![LiveSeal tutorial: the idea, how it works and its limits, in a minute and a half. Click to watch.](docs/media/tutorial-poster.png)](docs/media/liveseal-tutorial.mp4)
+https://github.com/user-attachments/assets/6afa464e-39fb-4264-9c17-da14261b8b50
 
-*[Watch the tutorial](docs/media/liveseal-tutorial.mp4): a minute and a half,
-no sound.*
+*The tutorial: the idea, how it works and its limits, in a minute and a half,
+without sound. The same file is in the repository as
+[docs/media/liveseal-tutorial.mp4](docs/media/liveseal-tutorial.mp4).*
 
 A face and a voice on a video call are no longer proof of anything: real-time
 face swaps and voice clones are good enough to pass as your bank, your boss or
