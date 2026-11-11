@@ -275,6 +275,31 @@ async function autoRun(): Promise<void> {
   window.liveseal = { done: false };
   await start();
   if (!running) { window.liveseal = { done: true, error: $('attack-note').textContent }; return; }
+  // ?rejoin=N: N times over, replace the verifier with a fresh one while the sealed call keeps
+  // running, and time how long the newcomer needs to reach green.
+  const rejoinGreenMs: number[] = [];
+  for (let i = 0; i < Number(params.get('rejoin') ?? 0); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 7000 + i * 370)); // a different point in the seal period each time
+    if (!running) break;
+    running.verify.stop();
+    const t0 = performance.now();
+    let got = -1;
+    const fresh = new VerifyPipeline({
+      video: received,
+      directory: running.directory,
+      onReport: (r) => {
+        badge.update(r.badge);
+        if (r.badge.level === 'green' && got < 0) got = performance.now() - t0;
+      },
+    });
+    fresh.start();
+    running.verify = fresh;
+    await new Promise<void>((resolve) => {
+      const wait = () => (got >= 0 || performance.now() - t0 > 15000 ? resolve() : setTimeout(wait, 50));
+      wait();
+    });
+    rejoinGreenMs.push(Math.round(got));
+  }
   let attackStart = -1;
   if (params.get('attack')) {
     // let the genuine call reach green first, then attack
@@ -303,6 +328,7 @@ async function autoRun(): Promise<void> {
     codes: reports.map((x) => x.outcome.code + (x.outcome.code === 'valid' && !x.outcome.checked ? '*' : '')),
     levels: reports.map((x) => x.badge.level[0]).join(''),
     timeToGreenMs: Math.round(firstGreenMs),
+    rejoinGreenMs,
     greenAfterFirst: after.length ? count('green', after) / after.length : 0,
     green: count('green'),
     amber: count('amber'),

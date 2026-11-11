@@ -40,16 +40,21 @@ section 8 and are not claimed anywhere.
 
 ## 1. Results against the targets
 
-| Metric | Target | Result | Level |
-|---|---|---|---|
-| False green across the attack suite | 0 in at least 10,000 attack periods | See section 6: 0 green periods in the attacks that replace the person, the scene, the key or the time. Edits smaller than the digest can resolve (mouth-only, a few percent of warp) **do** stay green and are reported in the same section. | Simulator |
-| Statement recovery, VP8 at 600 kbps | at least 99% per period | See section 2. Met with the default seal with the encoder denoiser on, at 640x360. | Simulator |
-| Time to green on a real call | at most 5 s | Not measured on a real call. Browser loop-back: section 7. By design the first green needs two statements, about 4 to 6 s after the receiver starts watching. | Browser loop-back |
-| Green stays up during a normal call | at least 95% of periods | Simulator: section 6, genuine runs. Browser loop-back: section 7. | Simulator, browser loop-back |
-| Relay attack detected | 100% amber or red, at least 90% red | Section 6. | Simulator |
-| Blind A/B invisibility | at most 60% correct | **Not met, and not measured with people.** On a flat, clean background the default seal can be seen with the naked eye (section 5). The test page exists (`abtest/`); no viewers took part. | observation |
-| Sender overhead | under 15% of one core at 720p30 | Section 7 gives the measured per-frame cost in one browser on one machine. | Browser loop-back |
-| Platforms verified end to end | Jitsi, Meet, Teams web, Zoom | **None.** Section 8. | none |
+<!-- table:targets -->
+| Metric | Target | Result | Met? | Level |
+|---|---|---|---|---|
+| False green across the attack suite | 0 in at least 10,000 attack periods | 0 green in 10608 attack periods for attacks that replace the person, the scene, the key or the time. Separately, edits below the digest's resolution (mouth only, small warps, short delays) were green in 360 of 1190 periods (section 6.2). | Yes for the first group. **No** for sub-resolution edits. | Simulator |
+| Statement recovery, VP8 at 600 kbps | at least 99% per period | 347 of 348 (99.7%) at 640x360 with the encoder denoiser on (section 2.1) | Yes, in the simulator. Not at an amplitude viewers cannot see (section 5). | Simulator |
+| Time to green on a real call | at most 5 s | No real call. Browser loop-back, VP8 600 kbps: 8 runs: 5.7 to 7.4 s, median 6.5 s when both ends start together; 12 of 12 joins reached green: 4.1 to 5.9 s, median 5.1 s when the call is already sealed. | **No.** Two statements are needed, which takes 4 to 6 s by design. | Browser loop-back |
+| Green stays up during a normal call | at least 95% of periods | Simulator: 98.8% of periods after the first green, over 48 genuine runs (section 6.3). Browser loop-back: 100% in 11 of 11 runs (section 7.1). | Yes, on static-camera test clips | Simulator, browser loop-back |
+| Relay attack detected | 100% amber or red, at least 90% red | 384 of 384 (100.0%) of relay runs had no green period; 384 of 384 (100.0%) reached red (section 6.1). The sub-resolution relay edits of section 6.2 are not counted here. | Yes, for a replaced face or person | Simulator |
+| Blind A/B invisibility | at most 60% correct | No viewers took part. On a flat, clean background the default seal can be seen with the naked eye (section 5). | **No** | Observation |
+| Sender overhead | under 15% of one core at 720p30 | 5.91 ms (17.7% of one core at 30 fps) at 720p; 2.55 ms (7.6% of one core at 30 fps) at 360p. Page work only, one machine. | **No** at 720p | Browser loop-back |
+| Platforms verified end to end | Jitsi, Meet, Teams web, Zoom | None. No call between two machines was made (section 8). | **No** | none |
+<!-- /table -->
+
+"Met?" is judged at the level of evidence shown in the last column. No target
+is met on a real call, because no real call was made.
 
 ## 2. The hidden channel through real codecs
 
@@ -228,7 +233,7 @@ Across every sealed run in this section and in sections 2.8 and 4:
 <!-- table:wrong-total -->
 | Sealed runs | Periods sent | Periods recovered | Periods decoded to something else |
 |---|---|---|---|
-| 710 | 6830 | 5611 | 0 |
+| 782 | 7478 | 6158 | 0 |
 <!-- /table -->
 
 ### 2.8 What the call path may do to the picture (T4)
@@ -238,6 +243,24 @@ VP8, 600 kbps, 640x360, denoiser on, four conference clips. Default seal:
 <!-- table:impair-default -->
 | Condition (VP8, 600 kbps, 640x360, denoiser on) | Statements recovered | Wrong decodes |
 |---|---|---|
+| 15 fps | 36 of 36 (100.0%) | 0 |
+| 30% frames lost | 35 of 36 (97.2%) | 0 |
+| 10% frames lost | 36 of 36 (100.0%) | 0 |
+| baseline | 36 of 36 (100.0%) | 0 |
+| sent at 320x180, 300 kbps | 35 of 36 (97.2%) | 0 |
+| crop 1% | 36 of 36 (100.0%) | 0 |
+| sent at 480x270 | 36 of 36 (100.0%) | 0 |
+| crop 2% | 36 of 36 (100.0%) | 0 |
+| brighter, more contrast | 36 of 36 (100.0%) | 0 |
+| upscaled by the receiver | 36 of 36 (100.0%) | 0 |
+| crop 4% | 21 of 36 (58.3%) | 0 |
+| darker | 36 of 36 (100.0%) | 0 |
+| re-filmed model, 0px registration error | 36 of 36 (100.0%) | 0 |
+| crop 8% | 0 of 36 (0.0%) | 0 |
+| re-encoded: VP8 then H.264 600 kbps | 36 of 36 (100.0%) | 0 |
+| re-filmed model, 2px registration error | 36 of 36 (100.0%) | 0 |
+| re-encoded: VP8 then VP9 300 kbps | 9 of 36 (25.0%) | 0 |
+| re-filmed model, 5px registration error | 15 of 36 (41.7%) | 0 |
 <!-- /table -->
 
 Light seal:
@@ -480,32 +503,33 @@ the best an attacker can do.
 <!-- table:attacks-must -->
 | Threat | What the attacker does | Runs | Periods | Green periods | Amber | Red | Runs with red / with green |
 |---|---|---|---|---|---|---|---|
-| T1 | another person, no seal | 20 | 260 | 0 | 260 | 0 | 0 / 0 |
-| T1 | swapped face, no seal | 20 | 260 | 0 | 260 | 0 | 0 / 0 |
-| T2 | recording played one hour later | 20 | 280 | 0 | 0 | 280 | 20 / 0 |
-| T2 | recording from a call with another challenge | 20 | 280 | 0 | 0 | 280 | 20 / 0 |
-| T2 | unchallenged recording against a fresh challenge | 20 | 280 | 0 | 280 | 0 | 0 / 0 |
-| T3 | seal lifted onto a swapped face (a) | 19 | 266 | 0 | 19 | 247 | 19 / 0 |
-| T3 | seal lifted onto a swapped face (b) | 19 | 266 | 0 | 19 | 247 | 19 / 0 |
-| T3 | seal lifted onto a swapped face (c) | 18 | 252 | 0 | 18 | 234 | 18 / 0 |
-| T3 | seal lifted onto another person (a) | 19 | 266 | 0 | 20 | 246 | 19 / 0 |
-| T3 | seal lifted onto another person (b) | 19 | 266 | 0 | 19 | 247 | 19 / 0 |
-| T3 | seal lifted, challenge relayed, swapped face | 18 | 252 | 0 | 18 | 234 | 18 / 0 |
-| T3 | seal lifted onto a face bent by 12% | 18 | 252 | 0 | 18 | 234 | 18 / 0 |
-| T5 | sealed with an unverified key | 16 | 224 | 0 | 224 | 0 | 0 / 0 |
-| T6 | sealed with a revoked key | 16 | 224 | 0 | 0 | 224 | 16 / 0 |
-| T7 | no seal, claims to be a contact who seals | 16 | 208 | 0 | 208 | 0 | 0 / 0 |
+| T1 | another person, no seal | 48 | 624 | 0 | 624 | 0 | 0 / 0 |
+| T1 | swapped face, no seal | 48 | 624 | 0 | 624 | 0 | 0 / 0 |
+| T2 | recording played one hour later | 48 | 672 | 0 | 1 | 671 | 48 / 0 |
+| T2 | recording from a call with another challenge | 48 | 672 | 0 | 0 | 672 | 48 / 0 |
+| T2 | unchallenged recording against a fresh challenge | 48 | 672 | 0 | 672 | 0 | 0 / 0 |
+| T3 | seal lifted onto a swapped face (a) | 48 | 672 | 0 | 48 | 624 | 48 / 0 |
+| T3 | seal lifted onto a swapped face (b) | 48 | 672 | 0 | 48 | 624 | 48 / 0 |
+| T3 | seal lifted onto a swapped face (c) | 48 | 672 | 0 | 49 | 623 | 48 / 0 |
+| T3 | seal lifted onto another person (a) | 48 | 672 | 0 | 49 | 623 | 48 / 0 |
+| T3 | seal lifted onto another person (b) | 48 | 672 | 0 | 49 | 623 | 48 / 0 |
+| T3 | seal lifted, challenge relayed, swapped face | 48 | 672 | 0 | 48 | 624 | 48 / 0 |
+| T3 | seal lifted onto a face bent by 12% | 48 | 672 | 0 | 49 | 623 | 48 / 0 |
+| T5 | sealed with an unverified key | 48 | 672 | 0 | 672 | 0 | 0 / 0 |
+| T6 | sealed with a revoked key | 48 | 672 | 0 | 1 | 671 | 48 / 0 |
+| T7 | no seal, claims to be a contact who seals | 48 | 624 | 0 | 624 | 0 | 0 / 0 |
+| T3 | seal lifted onto a swapped face (d) | 48 | 672 | 0 | 50 | 622 | 48 / 0 |
 <!-- /table -->
 
 <!-- table:attacks-total -->
 | Measure | Result |
 |---|---|
-| Attack periods in the "must never be green" group | 3836 |
+| Attack periods in the "must never be green" group | 10608 |
 | Green periods among them | 0 |
-| Relay (T3) runs | 130 |
-| Relay runs that ended amber or red (no green at any point) | 130 of 130 (100.0%) |
-| Relay runs that reached red | 130 of 130 (100.0%) |
-| T7 periods shown as a strong warning | 208 of 208 (100.0%) |
+| Relay (T3) runs | 384 |
+| Relay runs that ended amber or red (no green at any point) | 384 of 384 (100.0%) |
+| Relay runs that reached red | 384 of 384 (100.0%) |
+| T7 periods shown as a strong warning | 624 of 624 (100.0%) |
 <!-- /table -->
 
 ### 6.2 Edits below the digest's resolution (known limit)
@@ -535,16 +559,16 @@ that tolerates a call codec.
 <!-- table:attacks-genuine -->
 | Codec | Runs | Periods | Green | Amber | Red | Green share after the first green |
 |---|---|---|---|---|---|---|
-| h264-600 | 7 | 98 | 84 | 14 | 0 | 100.0% |
-| vp9dn-300 | 3 | 42 | 36 | 6 | 0 | 100.0% |
-| av1-600 | 7 | 98 | 84 | 14 | 0 | 100.0% |
-| vp8dn-600 | 3 | 42 | 36 | 6 | 0 | 100.0% |
+| h264-600 | 12 | 168 | 144 | 24 | 0 | 100.0% |
+| vp9dn-300 | 12 | 168 | 141 | 27 | 0 | 97.9% |
+| av1-600 | 12 | 168 | 144 | 24 | 0 | 100.0% |
+| vp8dn-600 | 12 | 168 | 140 | 28 | 0 | 97.2% |
 <!-- /table -->
 
 <!-- table:attacks-process -->
 | Threat | What the attacker does | Runs | Periods | Green periods | Amber | Red | Runs with red / with green |
 |---|---|---|---|---|---|---|---|
-| genuine | genuine call | 20 | 280 | 240 | 40 | 0 | 0 / 20 |
+| genuine | genuine call | 48 | 672 | 569 | 103 | 0 | 0 / 48 |
 | T4 | re-encoded once more (H.264 600 kbps) | 12 | 168 | 140 | 28 | 0 | 0 / 12 |
 | T4 | sent at half size | 12 | 168 | 144 | 24 | 0 | 0 / 12 |
 | T4 | cropped by 4% | 12 | 168 | 19 | 100 | 49 | 5 / 3 |
@@ -605,6 +629,7 @@ statement yet and "time to green" includes that.
 | Sealing, 1280x720, per frame | 5.91 ms (17.7% of one core at 30 fps) |
 | 1280x720 run | video/VP8 at 1970 kbps, encoded 1280x720, badge per period `aggggggggggggg` |
 | Time to green from a cold start, VP8 600 kbps | 8 runs: 5.7 to 7.4 s, median 6.5 s |
+| Time to green for a verifier joining a sealed call, VP8 600 kbps | 12 of 12 joins reached green: 4.1 to 5.9 s, median 5.1 s |
 | Per-frame cost covers | the page's own work (reduction, digest, shader draw, sampling, decoding); the camera and the video encoder are extra |
 <!-- /table -->
 

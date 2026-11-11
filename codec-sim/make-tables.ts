@@ -226,6 +226,53 @@ for (const [file, tag] of [['channel-impair.jsonl', 'light'], ['channel-impair2.
   }
 }
 
+// ---- results against the targets of the brief, assembled from the same data
+{
+  const a = rows('attacks.jsonl');
+  const long = rows('channel-long.jsonl').filter((r) => r.row.note === 'strong');
+  const must = a.filter((r) => r.group === 'must');
+  const limit = a.filter((r) => r.group === 'limit');
+  const t3 = must.filter((r) => r.threat === 'T3');
+  const gen = a.filter((r) => r.group === 'genuine');
+  let after = 0;
+  let greenAfter = 0;
+  for (const r of gen) {
+    const i = (r.levels as string).indexOf('g');
+    if (i < 0) continue;
+    after += r.levels.length - i;
+    greenAfter += [...(r.levels as string).slice(i)].filter((x) => x === 'g').length;
+  }
+  const file = join(ROOT, 'docs', 'browser-loopback.json');
+  const b = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as Json) : { runs: [], cost: [] };
+  const cost = new Map<string, string>((b.cost as [string, string][]) ?? []);
+  const find = (prefix: string) => [...cost.entries()].find(([k]) => k.startsWith(prefix))?.[1] ?? 'not measured';
+  const browserGenuine = ((b.runs as Json[]) ?? []).filter((r) => r.attack === 'none');
+  const allGreen = browserGenuine.filter((r) => r.greenAfterFirst === 1).length;
+  const mustPeriods = sum(must, (r) => r.periods);
+  const mustGreen = sum(must, (r) => r.green);
+  tables.targets = md(['Metric', 'Target', 'Result', 'Met?', 'Level'], [
+    ['False green across the attack suite', '0 in at least 10,000 attack periods',
+      `${mustGreen} green in ${mustPeriods} attack periods for attacks that replace the person, the scene, the key or the time. Separately, edits below the digest's resolution (mouth only, small warps, short delays) were green in ${sum(limit, (r) => r.green)} of ${sum(limit, (r) => r.periods)} periods (section 6.2).`,
+      mustGreen === 0 && mustPeriods >= 10000 ? 'Yes for the first group. **No** for sub-resolution edits.' : mustGreen === 0 ? `Zero so far, in fewer periods than the target. **No** for sub-resolution edits.` : '**No**', 'Simulator'],
+    ['Statement recovery, VP8 at 600 kbps', 'at least 99% per period',
+      `${frac(sum(long, (r) => r.periodsRecovered), sum(long, (r) => r.periodsSent))} at 640x360 with the encoder denoiser on (section 2.1)`,
+      sum(long, (r) => r.periodsRecovered) / Math.max(1, sum(long, (r) => r.periodsSent)) >= 0.99 ? 'Yes, in the simulator. Not at an amplitude viewers cannot see (section 5).' : '**No**', 'Simulator'],
+    ['Time to green on a real call', 'at most 5 s',
+      `No real call. Browser loop-back, VP8 600 kbps: ${find('Time to green from a cold start')} when both ends start together; ${find('Time to green for a verifier joining')} when the call is already sealed.`,
+      '**No.** Two statements are needed, which takes 4 to 6 s by design.', 'Browser loop-back'],
+    ['Green stays up during a normal call', 'at least 95% of periods',
+      `Simulator: ${pct(greenAfter, after)} of periods after the first green, over ${gen.length} genuine runs (section 6.3). Browser loop-back: 100% in ${allGreen} of ${browserGenuine.length} runs (section 7.1).`,
+      greenAfter / Math.max(1, after) >= 0.95 ? 'Yes, on static-camera test clips' : '**No** in the simulator; yes in the browser loop-back', 'Simulator, browser loop-back'],
+    ['Relay attack detected', '100% amber or red, at least 90% red',
+      `${frac(t3.filter((r) => r.green === 0).length, t3.length)} of relay runs had no green period; ${frac(t3.filter((r) => r.red > 0).length, t3.length)} reached red (section 6.1). The sub-resolution relay edits of section 6.2 are not counted here.`,
+      t3.length && t3.every((r) => r.green === 0) && t3.filter((r) => r.red > 0).length / t3.length >= 0.9 ? 'Yes, for a replaced face or person' : '**No**', 'Simulator'],
+    ['Blind A/B invisibility', 'at most 60% correct', 'No viewers took part. On a flat, clean background the default seal can be seen with the naked eye (section 5).', '**No**', 'Observation'],
+    ['Sender overhead', 'under 15% of one core at 720p30', `${find('Sealing, 1280x720')} at 720p; ${find('Sealing, 640x360')} at 360p. Page work only, one machine.`,
+      /\((\d+\.\d)%/.test(find('Sealing, 1280x720')) && Number(/\((\d+\.\d)%/.exec(find('Sealing, 1280x720'))![1]) < 15 ? 'Yes' : '**No** at 720p', 'Browser loop-back'],
+    ['Platforms verified end to end', 'Jitsi, Meet, Teams web, Zoom', 'None. No call between two machines was made (section 8).', '**No**', 'none'],
+  ]);
+}
+
 const doc = join(ROOT, 'docs', 'EVALUATION.md');
 let text = readFileSync(doc, 'utf8');
 let filled = 0;

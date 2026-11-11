@@ -932,6 +932,10 @@
    "8 runs: 5.7 to 7.4 s, median 6.5 s"
   ],
   [
+   "Time to green for a verifier joining a sealed call, VP8 600 kbps",
+   "12 of 12 joins reached green: 4.1 to 5.9 s, median 5.1 s"
+  ],
+  [
    "Per-frame cost covers",
    "the page's own work (reduction, digest, shader draw, sampling, decoding); the camera and the video encoder are extra"
   ]

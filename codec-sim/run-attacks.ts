@@ -65,6 +65,7 @@ function cases(clip: string): Case[] {
     { threat: 'T3', label: 'seal lifted onto a swapped face (a)', picture: { kind: 'swap', donor: pick(0) }, sealed: true, group: 'must' },
     { threat: 'T3', label: 'seal lifted onto a swapped face (b)', picture: { kind: 'swap', donor: pick(1) }, sealed: true, group: 'must' },
     { threat: 'T3', label: 'seal lifted onto a swapped face (c)', picture: { kind: 'swap', donor: pick(2) }, sealed: true, group: 'must' },
+    { threat: 'T3', label: 'seal lifted onto a swapped face (d)', picture: { kind: 'swap', donor: pick(5) }, sealed: true, group: 'must' },
     { threat: 'T3', label: 'seal lifted onto another person (a)', picture: { kind: 'other', clip: pick(3) }, sealed: true, group: 'must' },
     { threat: 'T3', label: 'seal lifted onto another person (b)', picture: { kind: 'other', clip: pick(4) }, sealed: true, group: 'must' },
     { threat: 'T3', label: 'seal lifted, challenge relayed, swapped face', picture: { kind: 'swap', donor: pick(3) }, sealed: true, group: 'must', challenge: [77, 77] },

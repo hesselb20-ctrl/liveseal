@@ -67,7 +67,7 @@ on a number you already know.
 
 ## Try it
 
-Open the site (after a build, or on the project's GitHub Pages address) and go
+Open the site at <https://hesselb20-ctrl.github.io/liveseal/> (or build it yourself, see below) and go
 to **Lab**. It runs a sealed call inside your browser, with a drawn stand-in
 or your own camera, and lets you play the attacker: remove the seal, swap the
 face, replay a recording, use someone else's key.
@@ -172,6 +172,8 @@ git-ignored and never published.
 
 Dependencies are MIT, BSD or Apache licensed: MediaPipe Tasks (face
 detection), noble-ed25519 (fallback signatures), jsQR and qrcode-generator.
+Development tools (Vite, TypeScript, esbuild, playwright-core) are MIT or
+Apache licensed as well.
 
 ## Roadmap
 

@@ -55,6 +55,23 @@ const runs: Result[] = [];
 const bank: Result[] = [];
 const log = (r: Result) => console.log(JSON.stringify({ codec: r.codec, kbps: r.measuredKbps, size: r.size, attack: r.attack, levels: r.levels, green: r.timeToGreenMs, path: r.path, error: r.error }));
 
+// `rejoin` mode: only the "verifier joins a running call" measurement, merged into the existing file
+if (process.argv.includes('rejoin') && haveClips) {
+  const r = await run(page, `/lab/?auto=1&codec=VP8&kbps=600&seconds=2&rejoin=12&source=${clip}&other=${other}`, 260);
+  const all = r.rejoinGreenMs as number[];
+  const ok = all.filter((v) => v >= 0).sort((a, b) => a - b);
+  console.log('rejoin', JSON.stringify(all));
+  const file = join(root, 'docs', 'browser-loopback.json');
+  const data = JSON.parse(readFileSync(file, 'utf8')) as { cost: [string, string][] };
+  const label = 'Time to green for a verifier joining a sealed call, VP8 600 kbps';
+  const row: [string, string] = [label, `${ok.length} of ${all.length} joins reached green: ${(ok[0] / 1000).toFixed(1)} to ${(ok[ok.length - 1] / 1000).toFixed(1)} s, median ${(ok[ok.length >> 1] / 1000).toFixed(1)} s`];
+  data.cost = data.cost.filter((c) => c[0] !== label);
+  data.cost.splice(Math.max(0, data.cost.length - 1), 0, row);
+  writeFileSync(file, JSON.stringify(data, null, 1) + '\n');
+  await browser.close();
+  process.exit(0);
+}
+
 if (haveClips) {
   const src = `&source=${clip}&other=${other}`;
   const genuine: [string, number, number, string][] = quick
@@ -82,6 +99,15 @@ if (haveClips) {
     } catch {
       // counted as missing
     }
+  }
+  // time to green for a verifier that joins a call which is already sealed
+  let rejoin: number[] = [];
+  try {
+    const r = await run(page, `/lab/?auto=1&codec=VP8&kbps=600&seconds=2&rejoin=${quick ? 3 : 12}${src}`, 260);
+    rejoin = (r.rejoinGreenMs as number[]).filter((v) => v >= 0);
+    console.log('rejoin', JSON.stringify(r.rejoinGreenMs));
+  } catch (err) {
+    console.log(`rejoin run failed: ${(err as Error).message.split('\n')[0]}`);
   }
   const attacks: [string, string][] = [
     ['strip', 'Fake picture, no seal (T1)'], ['replay', 'Sealed recording played 5 minutes later (T2)'],
@@ -132,6 +158,10 @@ if (haveClips) {
   if (greens.length) {
     greens.sort((a, b) => a - b);
     cost.push(['Time to green from a cold start, VP8 600 kbps', `${greens.length} runs: ${(greens[0] / 1000).toFixed(1)} to ${(greens[greens.length - 1] / 1000).toFixed(1)} s, median ${(greens[greens.length >> 1] / 1000).toFixed(1)} s`]);
+  }
+  if (rejoin.length) {
+    rejoin.sort((a, b) => a - b);
+    cost.push(['Time to green for a verifier joining a sealed call, VP8 600 kbps', `${rejoin.length} joins: ${(rejoin[0] / 1000).toFixed(1)} to ${(rejoin[rejoin.length - 1] / 1000).toFixed(1)} s, median ${(rejoin[rejoin.length >> 1] / 1000).toFixed(1)} s`]);
   }
   cost.push(['Per-frame cost covers', 'the page\'s own work (reduction, digest, shader draw, sampling, decoding); the camera and the video encoder are extra']);
   const file = join(root, 'docs', 'browser-loopback.json');
