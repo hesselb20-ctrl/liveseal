@@ -3,7 +3,7 @@
 // processes and resumed. docs/EVALUATION.md is generated from these files.
 //
 // Usage: node codec-sim/run-channel.ts <suite> [shard] [shards]
-// Suites: matrix, long, null, impair, hd, design
+// Suites: matrix, long, null, impair, impair2, hd, design
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -81,8 +81,10 @@ function suite(name: string): Row[] {
         }
       }
       break;
-    case 'impair': {
-      const base = { width: 640, height: 360, seconds: 20, ...PROFILES.standard };
+    case 'impair':
+    case 'impair2': {
+      // 'impair' uses the light seal, 'impair2' the default one
+      const base = { width: 640, height: 360, seconds: 20, ...(name === 'impair2' ? PROFILES.strong : PROFILES.standard) };
       const vp8: CodecConfig = { codec: 'vp8', kbps: 600, denoise: true };
       for (const clip of HD_CLIPS) {
         add({ clip, ...base, codec: vp8, note: 'baseline' });

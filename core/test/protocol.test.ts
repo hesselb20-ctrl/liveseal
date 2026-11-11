@@ -262,8 +262,12 @@ test('checker: every failure maps to the right outcome', async () => {
   assert.equal((await check(future)).code, 'stale');
 
   // T3: valid seal, wrong pictures
-  const m = await check(await signStatement(await next({}, 2), mum), { cmp: { verdict: 'mismatch', score: 0.9 } });
-  assert.equal(m.code, 'content-mismatch');
+  // a single mismatch is amber; the second in a row is red; a match in between resets the count
+  const m1 = await check(await signStatement(await next({}, 2), mum), { cmp: { verdict: 'mismatch', score: 0.9 } });
+  assert.equal(m1.code, 'content-uncertain');
+  const m2 = await check(await signStatement(await next({}, 3), mum), { cmp: { verdict: 'mismatch', score: 0.9 } });
+  assert.equal(m2.code, 'content-mismatch');
+  assert.equal((await check(await signStatement(await next({}, 3), mum), { cmp: { verdict: 'mismatch', score: 0.9 } })).code, 'content-mismatch');
   const u = await check(await signStatement(await next({}, 3), mum), { cmp: { verdict: 'uncertain', score: 0.5 } });
   assert.equal(u.code, 'content-uncertain');
 
@@ -325,7 +329,7 @@ test('badge: red is immediate, sticky, and cleared only by re-earning green', as
   const m = new BadgeMachine();
   m.push(valid);
   m.push(valid);
-  let b = m.push({ code: 'content-mismatch', key, score: 0.9 });
+  let b = m.push({ code: 'content-mismatch', key, score: 0.9, period: 1 });
   assert.equal(b.level, 'red');
   assert.match(b.detail, /not the picture Mum sealed/);
   // the attacker stops sending a seal: still red
@@ -334,7 +338,7 @@ test('badge: red is immediate, sticky, and cleared only by re-earning green', as
   assert.equal(m.push(valid).level, 'red');
   assert.equal(m.push(valid).level, 'green');
   // red hold expires after the configured number of quiet periods
-  m.push({ code: 'stale', key, skewSeconds: 999 });
+  m.push({ code: 'stale', key, skewSeconds: 999, period: 1 });
   for (let i = 0; i < DEFAULT_POLICY.redHoldPeriods; i++) assert.equal(m.push({ code: 'no-seal' }).level, 'red');
   assert.equal(m.push({ code: 'no-seal' }).level, 'amber');
 });
@@ -368,8 +372,8 @@ test('badge: exhaustive walk over outcome sequences never yields an unearned gre
   const outcomes: PeriodOutcome[] = [
     { code: 'valid', key, score: 0, statement: stmt, checked: true },
     { code: 'no-seal' }, { code: 'unreadable' }, { code: 'unknown-key', keyId: key.keyId },
-    { code: 'content-uncertain', key, score: 0.5 }, { code: 'content-mismatch', key, score: 1 },
-    { code: 'bad-signature', key }, { code: 'awaiting-challenge', key },
+    { code: 'content-uncertain', key, score: 0.5, period: 1 }, { code: 'content-mismatch', key, score: 1, period: 1 },
+    { code: 'bad-signature', key }, { code: 'awaiting-challenge', key, period: 1 },
   ];
   const depth = 6;
   let sequences = 0;

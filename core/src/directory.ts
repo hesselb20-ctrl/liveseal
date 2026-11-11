@@ -257,6 +257,13 @@ export class KeyDirectory {
     return this.keys;
   }
 
+  /** Replaces the contents of this directory with those of another, keeping this object (and every reference to it) alive. */
+  assign(other: KeyDirectory): void {
+    this.keys = other.keys.slice();
+    this.history = new Map(other.history);
+    this.orgFetchedAt = new Map(other.orgFetchedAt);
+  }
+
   /** All pinned keys with this key id. Usually zero or one. */
   find(keyId: Uint8Array): PinnedKey[] {
     return this.keys.filter((k) => equalBytes(k.keyId, keyId));

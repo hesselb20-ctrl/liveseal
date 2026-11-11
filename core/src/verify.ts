@@ -27,15 +27,15 @@ export type PeriodOutcome =
   | { code: 'malformed' }
   | { code: 'unsupported-version'; version: number }
   | { code: 'unknown-key'; keyId: Uint8Array }
-  | { code: 'awaiting-challenge'; key: PinnedKey }
-  | { code: 'content-uncertain'; key: PinnedKey; score: number }
+  | { code: 'awaiting-challenge'; key: PinnedKey; period: number }
+  | { code: 'content-uncertain'; key: PinnedKey; score: number; period: number }
   | { code: 'bad-signature'; key: PinnedKey }
   | { code: 'revoked-key'; key: PinnedKey }
   | { code: 'expired-key'; key: PinnedKey }
-  | { code: 'wrong-session'; key: PinnedKey }
-  | { code: 'stale'; key: PinnedKey; skewSeconds: number }
-  | { code: 'replayed'; key: PinnedKey }
-  | { code: 'content-mismatch'; key: PinnedKey; score: number }
+  | { code: 'wrong-session'; key: PinnedKey; period: number }
+  | { code: 'stale'; key: PinnedKey; skewSeconds: number; period: number }
+  | { code: 'replayed'; key: PinnedKey; period: number }
+  | { code: 'content-mismatch'; key: PinnedKey; score: number; period: number }
   | { code: 'valid'; key: PinnedKey; score: number; statement: Statement; /** false when the content could not be compared ('unobserved') */ checked: boolean };
 
 export type OutcomeCode = PeriodOutcome['code'];
@@ -57,6 +57,12 @@ export interface VerifierPolicy {
   challengeMaxSkewSeconds: number;
   /** After a red period, the badge stays red for at least this many periods unless green is re-earned. */
   redHoldPeriods: number;
+  /**
+   * Content mismatches in a row before the outcome is red. A single mismatch can come from a
+   * burst of bad picture quality (the first second of a stream, a sudden bitrate drop), so it is
+   * reported as uncertain (amber). Cryptographic failures are never delayed.
+   */
+  mismatchesForRed: number;
 }
 
 export const DEFAULT_POLICY: VerifierPolicy = {
@@ -64,6 +70,7 @@ export const DEFAULT_POLICY: VerifierPolicy = {
   passiveMaxSkewSeconds: 30,
   challengeMaxSkewSeconds: 120,
   redHoldPeriods: 5,
+  mismatchesForRed: 2,
 };
 
 export interface PeriodInput {
@@ -80,6 +87,7 @@ export interface PeriodInput {
 export class SealChecker {
   private challenge: Uint8Array | null = null;
   private lastPeriod = new Map<string, number>();
+  private mismatchRun = new Map<string, number>();
   private readonly directory: KeyDirectory;
   private readonly policy: VerifierPolicy;
 
@@ -122,25 +130,33 @@ export class SealChecker {
 
     const hasSession = !equalBytes(s.session, NO_SESSION);
     if (this.challenge) {
-      if (!hasSession) return { code: 'awaiting-challenge', key };
-      if (!equalBytes(s.session, this.challenge)) return { code: 'wrong-session', key };
+      if (!hasSession) return { code: 'awaiting-challenge', key, period: s.period };
+      if (!equalBytes(s.session, this.challenge)) return { code: 'wrong-session', key, period: s.period };
     }
 
     // The statement finished transmitting at the end of its period.
     const sentAt = ((s.period + 1) * PERIOD_MS) / 1000;
     const skew = nowUnix - sentAt;
     const maxSkew = this.challenge ? this.policy.challengeMaxSkewSeconds : this.policy.passiveMaxSkewSeconds;
-    if (Math.abs(skew) > maxSkew) return { code: 'stale', key, skewSeconds: skew };
+    if (Math.abs(skew) > maxSkew) return { code: 'stale', key, skewSeconds: skew, period: s.period };
 
     const id = toHex(key.publicKey);
     const last = this.lastPeriod.get(id);
-    if (last !== undefined && s.period <= last) return { code: 'replayed', key };
+    if (last !== undefined && s.period <= last) return { code: 'replayed', key, period: s.period };
 
     const cmp = await input.compare(s);
-    if (cmp.verdict === 'mismatch') return { code: 'content-mismatch', key, score: cmp.score };
+    if (cmp.verdict === 'mismatch') {
+      const run = (this.mismatchRun.get(id) ?? 0) + 1;
+      this.mismatchRun.set(id, run);
+      if (run >= this.policy.mismatchesForRed) return { code: 'content-mismatch', key, score: cmp.score, period: s.period };
+      // first mismatch: not yet a warning, and certainly not a match
+      this.lastPeriod.set(id, s.period);
+      return { code: 'content-uncertain', key, score: cmp.score, period: s.period };
+    }
+    if (cmp.verdict === 'match') this.mismatchRun.set(id, 0);
     // Only a statement that passed every cryptographic check advances the replay counter.
     this.lastPeriod.set(id, s.period);
-    if (cmp.verdict === 'uncertain') return { code: 'content-uncertain', key, score: cmp.score };
+    if (cmp.verdict === 'uncertain') return { code: 'content-uncertain', key, score: cmp.score, period: s.period };
     return { code: 'valid', key, score: cmp.score, statement: s, checked: cmp.verdict === 'match' };
   }
 }

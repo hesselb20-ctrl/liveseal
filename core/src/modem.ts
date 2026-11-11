@@ -321,6 +321,32 @@ export function makeReducer(
     }
     return { start, weights };
   };
+  if (srcW === dstW && srcH === dstH) {
+    return (plane, stride, out) => {
+      const dst = out ?? new Float32Array(dstW * dstH);
+      for (let y = 0; y < dstH; y++) {
+        const row = y * stride;
+        const o = y * dstW;
+        for (let x = 0; x < dstW; x++) dst[o + x] = plane[row + x];
+      }
+      return dst;
+    };
+  }
+  if (srcW === 2 * dstW && srcH === 2 * dstH) {
+    return (plane, stride, out) => {
+      const dst = out ?? new Float32Array(dstW * dstH);
+      for (let y = 0; y < dstH; y++) {
+        const r0 = 2 * y * stride;
+        const r1 = r0 + stride;
+        const o = y * dstW;
+        for (let x = 0; x < dstW; x++) {
+          const i = 2 * x;
+          dst[o + x] = (plane[r0 + i] + plane[r0 + i + 1] + plane[r1 + i] + plane[r1 + i + 1]) * 0.25;
+        }
+      }
+      return dst;
+    };
+  }
   const sx = spans(srcW, dstW);
   const sy = spans(srcH, dstH);
   const tmp = new Float32Array(dstW * srcH);

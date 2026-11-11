@@ -57,7 +57,7 @@ test('T3 relay: a live genuine seal on another face is red, never green', async 
   const lv = levels(reports);
   assert.ok(!lv.includes('green'), codes(reports).join(','));
   const judged = reports.filter((r) => r.outcome.code === 'content-mismatch');
-  assert.ok(judged.length >= 4, `only ${judged.length} mismatches: ${codes(reports).join(',')}`);
+  assert.ok(judged.length >= 3, `only ${judged.length} mismatches: ${codes(reports).join(',')}`);
   assert.equal(lv[lv.length - 1], 'red');
   assert.match(reports[reports.length - 1].badge.detail, /not the picture Mum sealed/);
 });

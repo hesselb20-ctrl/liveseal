@@ -40,6 +40,7 @@ export class SenderSession {
   private challenge: Uint8Array = new Uint8Array(0);
   private faceBox: FaceBox = DEFAULT_FACE_BOX;
   private prepared = new Set<number>();
+  private pending: Promise<void> = Promise.resolve();
   /** Called with every statement that was signed, for diagnostics. */
   onStatement: ((statement: Statement, wire: Uint8Array) => void) | null = null;
   /** Last error from signing, if any. */
@@ -86,7 +87,7 @@ export class SenderSession {
     const box = this.faceBox;
     const features = this.history.features(digestWindowStart(nextStart), box);
     if (!features) return; // not enough frames yet (just started): this period carries only pilots
-    void this.sign(next, computeDigest(features, box), box);
+    this.pending = this.sign(next, computeDigest(features, box), box);
   }
 
   private async sign(period: number, digest: Uint8Array, box: FaceBox): Promise<void> {
@@ -107,6 +108,11 @@ export class SenderSession {
     } catch (err) {
       this.lastError = err;
     }
+  }
+
+  /** Resolves when no signature is in progress. Lets a simulator run faster than real time and stay in step. */
+  whenIdle(): Promise<void> {
+    return this.pending;
   }
 
   /** Per-cell offsets to add to the frame shown at `unixMs`. */

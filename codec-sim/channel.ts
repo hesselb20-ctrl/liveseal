@@ -96,6 +96,16 @@ export class FrameSealer {
     this.field = new Float32Array(layout.cells);
   }
 
+  /** Adds a ready-made field (for example one lifted from another stream) to a frame. */
+  applyField(frame: Uint8Array, field: Float32Array, frameIndex: number): void {
+    const p = planesOf(frame, this.width, this.height);
+    this.luma.apply(p.y, this.width, field, 0, frameIndex);
+    if (this.layout.params.planes === 3) {
+      this.chroma.apply(p.u, p.cw, field, 1, frameIndex);
+      this.chroma.apply(p.v, p.cw, field, 2, frameIndex);
+    }
+  }
+
   seal(frame: Uint8Array, schedule: SealSchedule, unixMs: number, amplitude: number, chroma: number, frameIndex: number): void {
     const p = planesOf(frame, this.width, this.height);
     schedule.field(unixMs, [amplitude, chroma, chroma], this.field);
