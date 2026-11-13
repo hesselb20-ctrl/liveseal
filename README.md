@@ -1,9 +1,10 @@
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/hero-mobile-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/hero-mobile-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/hero-dark.svg">
-  <img src=".github/assets/hero-light.svg" width="100%" alt="LiveSeal. A signed seal in live video, checked by the receiver. Research preview, no real call yet.">
-</picture>
+# LiveSeal
+
+A signed seal in live video, checked by the receiver.
+
+<img src=".github/assets/figure.webp" width="100%" alt="3D chart. One signed statement is spread over 1,728 cells across three colour planes. Columns then show the share of periods verified for each codec, resolution and bitrate, green where the seal survives and coral where it breaks. A last panel shows three misses against their targets: time to verify, CPU use, and mouth-only edits that pass.">
+
+<sub>Numbers from `docs/EVALUATION.md` and the test vector in `docs/PROTOCOL.md`. Codec simulation and a browser loop-back only: no real call has been made.</sub>
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-01-dark.svg">
@@ -54,13 +55,6 @@ Design rationale: [`docs/DESIGN.md`](docs/DESIGN.md). Attacks it is built agains
   <img src=".github/assets/rule-03-light.svg" width="100%" alt="03 How it works">
 </picture>
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/flow-mobile-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/flow-mobile-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/flow-dark.svg">
-  <img src=".github/assets/flow-light.svg" width="100%" alt="Data flow. On the sender: the camera frame is reduced and the face located on the device; every 2 seconds a 32-byte digest of the last 2 seconds is signed with Ed25519; the statement is error-coded and embedded as small shifts in a 32 by 18 grid of cells on three colour planes. Through the call: any call app and codec carry the pixels; the receiver reads a video tile, a captured window or a recording. On the receiver: pilots and soft LDPC decoding recover the statement, the verifier checks key, signature, revocation, session, freshness, replay and content, and a badge turns green only after two valid statements in a row.">
-</picture>
-
 1. **Keys.** Each user has one Ed25519 key pair, created as a non-extractable WebCrypto key and
    kept in IndexedDB. Browsers without Ed25519 in WebCrypto get a software key, with a warning in
    the UI. Contacts are pinned by scanning a QR code and comparing a safety number.
@@ -84,24 +78,6 @@ Design rationale: [`docs/DESIGN.md`](docs/DESIGN.md). Attacks it is built agains
    content-checked, so the first green comes 4 to 6 seconds after watching starts. Amber means no
    seal, unreadable, unknown key or uncertain content. Red means a clean decode that fails a
    check, and is held for several periods.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/scene-dark.gif">
-  <img src=".github/assets/scene-light.gif" width="100%" alt="Exploded 3D view of one video frame as three stacked grids of 32 by 18 cells, labelled Y, Cb and Cr, whose cells step up or down through the eight time slots of one seal period, with pilot cells marked in solid tone.">
-</picture>
-
-<sub>One 2-second seal period of the protocol's own test vector (`docs/PROTOCOL.md` section 12),
-encoded by `core/src/modem.ts` with its default settings: three planes, 32 x 18 cells, 8 slots of
-250 ms, one pilot in 8. Cell height is exaggerated (the real shift is 2 to 3 of 255 levels) and time
-is slowed four times.</sub>
-
-<picture>
-  <img src="docs/media/lab-swapped.jpg" width="100%" alt="Screenshot of the lab page. Left, the caller's sealed picture of a drawn stand-in. Right, the receiver's picture with another face pasted in under the copied seal, and a red badge reading Warning: picture does not match. A faint block mosaic from the seal is visible on the flat wall.">
-</picture>
-
-<sub>A real screenshot of `lab/`, VP8 at 600 kbps inside one browser. Another face was pasted in
-under a copied seal and the badge turned red. The faint block mosaic on the flat wall is the seal
-itself: on clean, flat backgrounds it can be seen.</sub>
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-04-dark.svg">
