@@ -86,6 +86,16 @@ Design rationale: [`docs/DESIGN.md`](docs/DESIGN.md). Attacks it is built agains
    check, and is held for several periods.
 
 <picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/scene-dark.gif">
+  <img src=".github/assets/scene-light.gif" width="100%" alt="Exploded 3D view of one video frame as three stacked grids of 32 by 18 cells, labelled Y, Cb and Cr, whose cells step up or down through the eight time slots of one seal period, with pilot cells marked in solid tone.">
+</picture>
+
+<sub>One 2-second seal period of the protocol's own test vector (`docs/PROTOCOL.md` section 12),
+encoded by `core/src/modem.ts` with its default settings: three planes, 32 x 18 cells, 8 slots of
+250 ms, one pilot in 8. Cell height is exaggerated (the real shift is 2 to 3 of 255 levels) and time
+is slowed four times.</sub>
+
+<picture>
   <img src="docs/media/lab-swapped.jpg" width="100%" alt="Screenshot of the lab page. Left, the caller's sealed picture of a drawn stand-in. Right, the receiver's picture with another face pasted in under the copied seal, and a red badge reading Warning: picture does not match. A faint block mosaic from the seal is visible on the flat wall.">
 </picture>
 
