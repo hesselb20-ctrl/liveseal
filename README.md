@@ -6,12 +6,7 @@ A signed seal in live video, checked by the receiver.
 
 <sub>Numbers from `docs/EVALUATION.md` and the test vector in `docs/PROTOCOL.md`. Codec simulation and a browser loop-back only: no real call has been made.</sub>
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-01-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-01-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-01-dark.svg">
-  <img src=".github/assets/rule-01-light.svg" width="100%" alt="01 What it is">
-</picture>
+## What it is
 
 LiveSeal lets the other side of a video call check who is really sending the picture. Every two
 seconds the caller's device signs a short statement with its own key and hides it in the video
@@ -24,12 +19,7 @@ It proves the real sender. It does not detect fakes. An unsealed call is "not ve
 It is a research prototype. It was measured in a codec simulator and in a WebRTC call looped back
 inside one browser. No call between two machines has been made with it.
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-02-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-02-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-02-dark.svg">
-  <img src=".github/assets/rule-02-light.svg" width="100%" alt="02 Why it exists">
-</picture>
+## Why it exists
 
 **The problem.** A face and a voice on a video call are weak evidence once real-time face swaps
 and voice clones exist. Detectors try to spot the fake, and a better fake beats them.
@@ -48,12 +38,7 @@ their staff's calls to be checkable. An organisation publishes its keys at
 Design rationale: [`docs/DESIGN.md`](docs/DESIGN.md). Attacks it is built against:
 [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-03-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-03-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-03-dark.svg">
-  <img src=".github/assets/rule-03-light.svg" width="100%" alt="03 How it works">
-</picture>
+## How it works
 
 1. **Keys.** Each user has one Ed25519 key pair, created as a non-extractable WebCrypto key and
    kept in IndexedDB. Browsers without Ed25519 in WebCrypto get a software key, with a warning in
@@ -79,12 +64,7 @@ Design rationale: [`docs/DESIGN.md`](docs/DESIGN.md). Attacks it is built agains
    seal, unreadable, unknown key or uncertain content. Red means a clean decode that fails a
    check, and is held for several periods.
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-04-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-04-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-04-dark.svg">
-  <img src=".github/assets/rule-04-light.svg" width="100%" alt="04 Capabilities">
-</picture>
+## Capabilities
 
 What the code does today. None of it has run on a real call between two machines.
 
@@ -133,12 +113,7 @@ Results from [`docs/EVALUATION.md`](docs/EVALUATION.md):
 - **A seal proves a key and a device, not a person.** A stolen unlocked device seals until its
   key is revoked.
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-05-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-05-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-05-dark.svg">
-  <img src=".github/assets/rule-05-light.svg" width="100%" alt="05 Quick start">
-</picture>
+## Quick start
 
 Requires Node.js 22.18 or newer. Commands below were run on Windows 11 with Node 26.13 and npm
 11.20, in Git Bash. They were not tested on macOS or Linux; CI runs the same steps on Ubuntu with
@@ -189,12 +164,7 @@ needs ffmpeg with libvpx, libx264 and libaom and about 3.7 GB of Xiph test clips
 here. The scripts are `scripts/fetch-testdata.sh`, `scripts/run-sweeps.sh` and the `sim:*`
 entries in [`package.json`](package.json); the method is in [`docs/EVALUATION.md`](docs/EVALUATION.md).
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-06-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-06-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-06-dark.svg">
-  <img src=".github/assets/rule-06-light.svg" width="100%" alt="06 Stack, status, roadmap">
-</picture>
+## Stack, status, roadmap
 
 **Stack**
 
@@ -244,12 +214,7 @@ attack, face tracking in the extension, WebGPU, Firefox and Safari.
 | [`docs/EVALUATION.md`](docs/EVALUATION.md) | Every measurement, including the failures, and what was not done |
 | [`docs/media/liveseal-tutorial.mp4`](docs/media/liveseal-tutorial.mp4?raw=true) | 99-second explainer video, no sound, 5.8 MB download. Its drawings show the seal far stronger than it is. |
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-07-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-07-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-07-dark.svg">
-  <img src=".github/assets/rule-07-light.svg" width="100%" alt="07 License">
-</picture>
+## License
 
 MIT. See [`LICENSE`](LICENSE).
 
