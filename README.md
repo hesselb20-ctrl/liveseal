@@ -64,6 +64,10 @@ Design rationale: [`docs/DESIGN.md`](docs/DESIGN.md). Attacks it is built agains
    seal, unreadable, unknown key or uncertain content. Red means a clean decode that fails a
    check, and is held for several periods.
 
+<img src=".github/assets/figure-how.webp" width="100%" alt="A timeline turns eight snapshots into digest bits, then a 122-byte signed statement spread over eight slots, then nine check gates and a row of badges that turns green after two valid statements in a row.">
+
+<sub>Protocol per <code>PROTOCOL.md</code> sections 3 and 6 to 9. Digest bits are the section 12 test vector; badges from one browser loop-back run.</sub>
+
 ## Capabilities
 
 What the code does today. None of it has run on a real call between two machines.
@@ -112,6 +116,10 @@ Results from [`docs/EVALUATION.md`](docs/EVALUATION.md):
   of tracking the face.
 - **A seal proves a key and a device, not a person.** A stolen unlocked device seals until its
   key is revoked.
+
+<img src=".github/assets/figure-more.webp" width="100%" alt="Nineteen diverging bars: attacks that replace the person, key or time are stopped in all 10,608 periods; mouth-only edits pass 266 of 350; two dashed rows are untested.">
+
+<sub>Codec simulator only (<code>EVALUATION.md</code>, 12 clips, 4 codecs), pasted-face proxies. No neural swap and no real call tested.</sub>
 
 ## Quick start
 
