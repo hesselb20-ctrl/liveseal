@@ -1,235 +1,258 @@
 # LiveSeal
 
-**Check who is really on the video call.**
+A signed seal in live video, checked by the receiver.
 
-https://github.com/user-attachments/assets/8edf0134-fe28-4334-8318-486b7e7f6100
+<img src=".github/assets/figure.webp" width="100%" alt="3D chart. One signed statement is spread over 1,728 cells across three colour planes. Columns then show the share of periods verified for each codec, resolution and bitrate, green where the seal survives and coral where it breaks. A last panel shows three misses against their targets: time to verify, CPU use, and mouth-only edits that pass.">
 
-*The tutorial: the idea, how it works and its limits, in a minute and a half,
-without sound. The same file is in the repository as
-[docs/media/liveseal-tutorial.mp4](docs/media/liveseal-tutorial.mp4).*
+<sub>Numbers from `docs/EVALUATION.md` and the test vector in `docs/PROTOCOL.md`. Codec simulation and a browser loop-back only: no real call has been made.</sub>
 
-A face and a voice on a video call are no longer proof of anything: real-time
-face swaps and voice clones are good enough to pass as your bank, your boss or
-your mother. LiveSeal takes the opposite approach to "deepfake detectors". It
-does not try to spot the fake. It lets the real person's device prove itself.
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-01-dark.svg">
+  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-01-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-01-dark.svg">
+  <img src=".github/assets/rule-01-light.svg" width="100%" alt="01 What it is">
+</picture>
 
-![The idea. Mum's device holds a private key that never leaves it, and hides a seal in every picture it sends. Your device knows her public key from pairing once, and checks the seal. A clone can copy her face and her voice. It cannot make her seal.](docs/media/idea.png)
+LiveSeal lets the other side of a video call check who is really sending the picture. Every two
+seconds the caller's device signs a short statement with its own key and hides it in the video
+pixels. The receiving device reads the statement back out, checks it against a key it already
+trusts, and shows a green, amber or red badge.
 
-The caller's device hides a small cryptographic seal inside its video
-picture. Your device reads the seal back out of the picture and checks it:
+It proves the real sender. It does not detect fakes. An unsealed call is "not verified", never
+"fake", and most honest callers have no seal.
 
-* **Green, "Verified: Mum"**: the picture carries a fresh seal from the key
-  you paired with her, and it is the picture her device sealed.
-* **Amber, "Not verified"**: there is no seal, or it cannot be read. On its
-  own this tells you nothing. If Mum normally seals her calls, LiveSeal says
-  so in plain words.
-* **Red, "Warning"**: there is a seal and it fails a check. Wrong signature,
-  an old recording, a seal made for another call, or a picture that is not the
-  one that was sealed.
+It is a research prototype. It was measured in a codec simulator and in a WebRTC call looped back
+inside one browser. No call between two machines has been made with it.
 
-![The three answers. Green, "Verified: Mum": a fresh seal from the key you paired with her, on the picture her device sealed. Amber, "Not verified": no seal, or one that cannot be read; on its own this means nothing. Red, "Warning": a seal is there and fails a check.](docs/media/three-answers.png)
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-02-dark.svg">
+  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-02-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-02-dark.svg">
+  <img src=".github/assets/rule-02-light.svg" width="100%" alt="02 Why it exists">
+</picture>
 
-Everything runs on your own device. No accounts, no servers, no tracking, and
-no video ever leaves the page that processes it.
+**The problem.** A face and a voice on a video call are weak evidence once real-time face swaps
+and voice clones exist. Detectors try to spot the fake, and a better fake beats them.
 
-## Status: research preview
+**What was missing.** A way for the genuine sender to prove itself through any call product,
+without a server or an account. The proof has to survive the call's video codec, be bound to this
+moment and this call, and be bound to the pictures that were actually sent, so a valid seal cannot
+be lifted onto other footage. A signature every 2 seconds needs about 500 payload bits per second
+in the picture, far more than classic invisible watermarks carry. That channel is what this
+repository builds and measures.
 
-Please read this before relying on LiveSeal for anything.
+**Who it is for.** People who want to check a known contact on a call, and organisations that want
+their staff's calls to be checkable. An organisation publishes its keys at
+`https://<domain>/.well-known/liveseal.json`; `demo-bank/` shows that flow.
 
-| | |
-|---|---|
-| **Works in tests** | The whole chain, measured in a simulator that pushes sealed video through real VP8, VP9, H.264 and AV1 encoders, and in a real WebRTC call looped back inside one browser. |
-| **Not tested** | A real call between two devices. No Jitsi, Meet, Teams, Zoom or WhatsApp call has been made with it. The browser extension has never been loaded on a real call site. |
-| **Not invisible** | On a flat, clean background the seal can be seen as a faint mosaic of coloured blocks. A real camera picture hides it better; how much has not been measured. A blind test page exists; nobody has taken it yet. |
-| **Known to fail** | Callers holding a phone in their hand (a moving camera breaks the seal), VP8 below about 600 kbps, 720p video below about 1 Mbps. |
-| **Known gap** | Changing only the mouth of a genuine sealed stream was not caught in testing. |
+Design rationale: [`docs/DESIGN.md`](docs/DESIGN.md). Attacks it is built against:
+[`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 
-All measurements, including the unflattering ones, are in
-[docs/EVALUATION.md](docs/EVALUATION.md).
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-03-dark.svg">
+  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-03-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-03-dark.svg">
+  <img src=".github/assets/rule-03-light.svg" width="100%" alt="03 How it works">
+</picture>
 
-## What LiveSeal can and cannot prove
+1. **Keys.** Each user has one Ed25519 key pair, created as a non-extractable WebCrypto key and
+   kept in IndexedDB. Browsers without Ed25519 in WebCrypto get a software key, with a warning in
+   the UI. Contacts are pinned by scanning a QR code and comparing a safety number.
+2. **Digest.** Both ends reduce every frame to 320 x 180 luma. The sender finds the face with an
+   on-device MediaPipe detector and signs the face box. The 32-byte digest holds four 48-bit
+   gradient hashes of the face and two 32-bit whole-frame hashes from the previous 2 seconds.
+3. **Statement.** Version, call challenge, key id, period index, face box, digest and an optional
+   challenge for the peer, as deterministic CBOR, signed with Ed25519. 122 bytes on the wire, 125
+   with a challenge.
+4. **Channel.** The statement gets a length byte and a CRC-32, then a repeat-accumulate LDPC code
+   at about rate 1/5 and an interleaver. It is sent as up or down shifts of 2 levels on luma and 3
+   on each colour plane, in a 32 x 18 grid of cells, with symbols of a quarter second sent as
+   differential pairs. One cell in eight is a pilot.
+5. **Decode.** The receiver subtracts the two halves of each pair to cancel the still picture,
+   uses the pilots for timing and per-plane amplitude, and runs a soft-decision LDPC decode. A
+   frame that fails the CRC is "no readable seal", never tampering.
+6. **Check.** In fixed order: pilots, decode, pinned key, signature, revocation, session,
+   freshness, replay, content. The content check compares the signed digest with a digest of the
+   frames actually received.
+7. **Badge.** Green needs two valid statements in a row from the same key, the newest one
+   content-checked, so the first green comes 4 to 6 seconds after watching starts. Amber means no
+   seal, unreadable, unknown key or uncertain content. Red means a clean decode that fails a
+   check, and is held for several periods.
 
-![What LiveSeal can and cannot show. It can show that the picture was sealed by a device holding a key you trust, in the last few seconds, and that the person was not swapped afterwards. It cannot show that an unsealed call is fake, anything about the sound, small edits, or who is holding the device. Measured in a simulator and a browser loop-back, not yet on a real call between two devices.](docs/media/limits.png)
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-04-dark.svg">
+  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-04-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-04-dark.svg">
+  <img src=".github/assets/rule-04-light.svg" width="100%" alt="04 Capabilities">
+</picture>
 
-It **can** show that:
+What the code does today. None of it has run on a real call between two machines.
 
-* the picture was sealed by a device holding a key you paired with, or a key
-  that an organisation publishes on its own web address;
-* the seal was made in the last few seconds, and for this particular call if
-  you ask the caller for a three-word code;
-* the person in the picture has not been swapped for someone else after the
-  picture was sealed.
+- **Protocol core.** CBOR, Ed25519, LDPC and Reed-Solomon codes, modem, digest, contacts,
+  revocation, verification state machine, sender and receiver sessions. Pure TypeScript, no DOM.
+  `core/src`
+- **Codec simulator.** Pushes sealed clips through ffmpeg's VP8, VP9, H.264 and AV1 encoders and
+  feeds the result to the real receiver. Also the digest research and the attack suite. `codec-sim`
+- **Browser parts.** WebGL2 sealing shader, Insertable Streams sealer, worker verifier, key storage,
+  badge, pairing panel. `shared`
+- **Lab.** A sealed call through a real `RTCPeerConnection` pair inside one page, with attack
+  buttons. `lab`
+- **LiveSeal Camera.** A PWA that seals the webcam, meant to feed a virtual camera. `sender`
+- **Verifier.** Checks a screen through a phone camera or window capture; `checker.html` checks a
+  recorded call and reports every 2 seconds. `verifier`
+- **Extension.** Manifest V3. Seals `getUserMedia` on web call sites and badges incoming video
+  tiles. `extension`
+- **Demo organisation.** A pretend bank that publishes `.well-known/liveseal.json`. `demo-bank`
+- **Blind visibility test.** Sealed and unsealed copies in random order, 20 rounds. `abtest`
 
-It **cannot** show:
+Results from [`docs/EVALUATION.md`](docs/EVALUATION.md):
 
-* **that an unsealed call is fake.** No seal means "unknown". Most honest
-  callers will have no seal.
-* **anything about the sound.** The seal covers the picture only. A real
-  sealed picture with a cloned voice over it stays green.
-* **small edits.** The seal tolerates what video compression does to a
-  picture, so an edit that is no bigger than that can slip through. In testing,
-  replacing only the mouth region was mostly not caught.
-* **who is holding the device.** A stolen, unlocked device seals just as well
-  until its owner revokes the key.
-* **anything if the caller's own device is compromised**, or if a real person
-  chooses to lie to you.
+| Measure | Result | Level |
+|---|---|---|
+| Statements recovered, VP8 600 kbps, 640x360, default seal | 347 of 348 (99.7%) | Simulator |
+| Green periods among attacks that replace person, scene, key or time | 0 of 10,608 | Simulator |
+| Periods reported as sealed in 3,900 s of unsealed video | 0 | Simulator |
+| Time to green, VP8 600 kbps, cold start | 5.7 to 7.4 s, median 6.5 s | Browser loop-back |
+| Sealing cost at 1280x720 | 17.7% of one core at 30 fps | Browser loop-back |
+| Calls between two machines | 0 | Real call |
 
-LiveSeal is one more check, not a replacement for hanging up and calling back
-on a number you already know.
+**Known limits.** These come from the repository's own evaluation and design notes.
 
-## Try it
+- **It does not stop deepfakes.** It can only prove a sealed sender. No seal means no information.
+- **The sound is not covered.** A genuine sealed picture with a cloned voice over it stays green.
+- **Small edits pass.** A mouth-only edit of a genuine sealed stream was green in 266 of 350
+  periods, and a 3% face warp in 80 of 168. No neural face-swap model was tested.
+- **Not invisible.** On a flat, clean background the default seal shows as a faint mosaic. No
+  human visibility test has been run.
+- **Moving cameras fail.** A hand-held clip recovered at most two thirds of its statements.
+- **Low bitrates fail.** VP8 at 300 kbps, and 720p VP8 at 600 kbps, lose most statements.
+- **Targets missed.** Time to green is 4 to 6 s by design against a 5 s target. Sealing at 720p
+  costs 17.7% of a core against a 15% target.
+- **The extension** was never loaded on a real call site, and signs a fixed central box instead
+  of tracking the face.
+- **A seal proves a key and a device, not a person.** A stolen unlocked device seals until its
+  key is revoked.
 
-Build the site (two commands, see "For developers" below), open it, and go
-to **Lab**. It runs a sealed call inside your browser, with a drawn stand-in
-or your own camera, and lets you play the attacker: remove the seal, swap the
-face, replay a recording, use someone else's key.
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-05-dark.svg">
+  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-05-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-05-dark.svg">
+  <img src=".github/assets/rule-05-light.svg" width="100%" alt="05 Quick start">
+</picture>
 
-| A genuine sealed call in the lab | Another face under a copied seal |
-|---|---|
-| ![Lab page: the receiver's picture carries a green badge reading "Verified: Demo caller".](docs/media/lab-verified.jpg) | ![Lab page: another face has been pasted over the caller under the copied seal, and the badge is red, reading "Warning: picture does not match".](docs/media/lab-swapped.jpg) |
+Requires Node.js 22.18 or newer. Commands below were run on Windows 11 with Node 26.13 and npm
+11.20, in Git Bash. They were not tested on macOS or Linux; CI runs the same steps on Ubuntu with
+Node 24.
 
-These two are real screenshots. Look closely at the flat wall and you can see
-the seal as a faint mosaic of blocks; that is the "not invisible" row in the
-status table above.
-
-| Page | What it is for |
-|---|---|
-| `lab/` | A sealed call in one page, with attack buttons. |
-| `sender/` | **LiveSeal Camera.** Seals your webcam. With the free OBS virtual camera it feeds Zoom, Teams or WhatsApp Desktop. |
-| `verifier/` | **Verify a screen.** Point a phone at any screen showing a call, or capture the call window. |
-| `verifier/checker.html` | **Check a recording.** Drop in a recorded call, get a report for every two seconds. |
-| `demo-bank/` | A pretend bank that publishes its keys, to show how an organisation proves its calls. |
-| `abtest/` | "Can you see the seal?" A blind test you can take. |
-| `extension/` | Browser extension (Chrome, Edge, Firefox): seals your camera on web call sites and puts a badge on each person's picture. |
-
-![Using LiveSeal in three moves. One: pair once, by scanning each other's code and comparing the safety number. Two: seal your camera, with the browser extension or the camera page plus a virtual camera. Three: check the call, with a badge on each person's picture, a phone pointed at the screen, or the recording checker.](docs/media/how-to-use.png)
-
-### Pairing
-
-To verify someone you first need their key. On the camera page or in the
-extension each person has a pairing code (a QR code). Scan each other's code,
-then read out the **safety number** that both screens show, in person or over
-a channel you already trust. If the numbers are the same, you have each
-other's real keys.
-
-### If a device is lost
-
-Print the **recovery sheet** when you set LiveSeal up. It holds a code that
-revokes your key. Send that code to your contacts; once they add it, calls
-sealed with the lost key show a warning. Then create a new key and pair again.
-Until a contact has added the code, a thief with your unlocked device can
-still produce valid seals.
-
-## How it works, in three steps
-
-![How it works: sign, hide, check. One: every two seconds the caller's device signs a statement: this key, now, this call, these pictures. Two: tiny shifts in large blocks of the picture carry the statement through the call app's compression. Three: your device reads it back and checks the signature, the time and the pictures.](docs/media/how-it-works.png)
-
-In these drawings and in the tutorial the seal is drawn far stronger than it
-is. The real change is 2 to 3 steps out of 255 per block.
-
-1. **The caller's device signs.** Every two seconds it signs a short
-   statement with an Ed25519 key: this key, now, for this call, and a
-   fingerprint of the pictures it just sent.
-2. **The statement rides in the picture.** Large blocks of the picture are
-   made very slightly brighter or darker, and slightly shifted in colour, in a
-   pattern that changes four times a second. Video compression keeps changes
-   like that, so the statement survives the call. It does not depend on the
-   call app.
-3. **Your device checks.** It reads the pattern, corrects errors, checks the
-   signature against a key you already trust, and compares the pictures it
-   received with the fingerprint that was signed.
-
-A clone has no key, so it cannot sign. A recording is too old. And a genuine
-seal copied onto other pictures no longer matches them.
-
-![What an attacker gets. A face-swap clone with no key cannot sign, so the call shows "Not verified". A sealed recording played back shows "Warning", because the signed time is too old. A real seal copied onto a swapped face shows "Warning", because the pictures no longer match the signed fingerprint. In the simulator and in the browser loop-back, none of these reached green.](docs/media/attacks.png)
-
-Smaller edits are a known gap: see the status table at the top.
-
-The design is explained in [docs/DESIGN.md](docs/DESIGN.md), the attacks it
-is built against in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), and the
-exact formats in [docs/PROTOCOL.md](docs/PROTOCOL.md).
-
-## Privacy
-
-* Verification happens on your device. No video, frame or face is sent
-  anywhere by LiveSeal.
-* There is no telemetry.
-* The seal contains a short key identifier, the time, the three-byte call
-  code, the position of the face in the picture and the picture fingerprint.
-  Anyone who can see your video can read these. The key identifier is the
-  same in every call you seal, so two sealed calls can be linked to the same
-  sender. The seal contains no name and no account.
-
-## For developers
-
-Requirements: Node.js 22.18 or newer. For the simulator also a free
-[ffmpeg](https://ffmpeg.org/) build with libvpx, libx264 and libaom on the
-PATH.
-
-```
-npm install
-npm test                      # unit tests (no codec needed)
-node scripts/vendor.ts        # copy the face detector's files into public/vendor
-npm run dev                   # the site at http://localhost:5173
-npm run build                 # static site in dist/, extension in extension/dist/
+```bash
+git clone https://github.com/hesselb20-ctrl/liveseal.git
+cd liveseal
+npm ci
 ```
 
-Load `extension/dist/` as an unpacked extension (Chrome, Edge) or as a
-temporary add-on (Firefox).
+Run the unit tests. No codec is needed. Expect `pass 49`, `fail 0`, in about 70 seconds.
 
-The site is a folder of static files (`dist/`) and can be served from any
-static host. The included workflow can publish it to GitHub Pages; that is
-switched off by default (see the note in `.github/workflows/ci.yml`).
-
-Reproducing the measurements:
-
-```
-bash scripts/fetch-testdata.sh all          # public Xiph test clips, about 3.7 GB, into data/
-bash scripts/run-sweeps.sh 4                # channel suites
-node codec-sim/digest-extract.ts            # digest research, stage 1
-node codec-sim/digest-eval.ts               # stage 2: compare the candidates
-node codec-sim/run-attacks.ts               # attack suite
-node codec-sim/make-tables.ts               # rebuild the tables in docs/EVALUATION.md
+```bash
+npm test
 ```
 
-Test footage, attack videos and result files live in `data/`, which is
-git-ignored and never published.
+Type-check. Expect no errors.
 
-| Folder | Contents |
+```bash
+npm run typecheck
+```
+
+Copy the face detector into `public/vendor/`. It fetches a small model file from Google storage
+on first run; without it, sealing falls back to a fixed central box. Expect
+`copied MediaPipe WASM runtime`, then `fetched face model` (or `face model already present`).
+
+```bash
+node scripts/vendor.ts
+```
+
+Start the site at `http://localhost:5173/` and open **Lab** (`/lab/`). It runs a sealed call inside
+your browser with a drawn stand-in or your camera, and lets you play the attacker.
+
+```bash
+npm run dev
+```
+
+Build the static site into `dist/` and the extension into `extension/dist/`. Expect
+`extension built in extension/dist (5 bundles)`.
+
+```bash
+npm run build
+```
+
+Loading `extension/dist/` as an unpacked extension was not done here. Reproducing the measurements
+needs ffmpeg with libvpx, libx264 and libaom and about 3.7 GB of Xiph test clips; it was not run
+here. The scripts are `scripts/fetch-testdata.sh`, `scripts/run-sweeps.sh` and the `sim:*`
+entries in [`package.json`](package.json); the method is in [`docs/EVALUATION.md`](docs/EVALUATION.md).
+
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-06-dark.svg">
+  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-06-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-06-dark.svg">
+  <img src=".github/assets/rule-06-light.svg" width="100%" alt="06 Stack, status, roadmap">
+</picture>
+
+**Stack**
+
+| Layer | Built with |
 |---|---|
-| `core/` | Protocol, crypto, error correction, modem, digest, state machine. Pure TypeScript, no DOM. |
-| `codec-sim/` | Real-codec simulator, digest research, attack suite. |
-| `shared/` | Browser code used by several apps. |
-| `sender/`, `verifier/`, `lab/`, `abtest/`, `demo-bank/` | The pages. |
-| `extension/` | Manifest V3 extension. |
-| `docs/` | Design, threat model, protocol, evaluation. |
+| Core, simulator, scripts | TypeScript run directly by Node 22.18+, Node's built-in test runner |
+| Pages | Vite 7, static multi-page site, no server code |
+| Face detection | MediaPipe Tasks Vision, WASM, on the device |
+| Signatures | WebCrypto Ed25519, `@noble/ed25519` as fallback |
+| Pairing | `qrcode-generator`, `jsqr` |
+| Sealing | WebGL2 shader, Insertable Streams |
+| Extension | Manifest V3, bundled with esbuild |
+| Measurement | ffmpeg (libvpx, libx264, libaom), `playwright-core` for the browser loop-back |
 
-Dependencies are MIT, BSD or Apache licensed: MediaPipe Tasks (face
-detection), noble-ed25519 (fallback signatures), jsQR and qrcode-generator.
-Development tools (Vite, TypeScript, esbuild, playwright-core) are MIT or
-Apache licensed as well.
+**Status**
 
-## Roadmap
+| Part | State |
+|---|---|
+| Protocol core | Built. 49 unit tests pass. |
+| Hidden channel and digest | Measured in the simulator with real codecs on public test clips. |
+| Lab, sender, verifier, checker, demo bank | Build and run locally. Lab measured in a browser loop-back on one Windows laptop. |
+| Extension | Builds. Never loaded on Meet, Teams, Zoom or Jitsi. |
+| Real call between two machines | Not done. |
+| Human visibility test | Not done. The test page exists. |
+| Browsers | Only a Chromium-based browser was used. |
+| Deployment | None. The CI workflow can publish to GitHub Pages; it is off by default. |
 
-The three most important next steps, in order:
+**Roadmap.** The open items listed in `docs/EVALUATION.md` section 8, in the order the previous
+README ranked them:
 
-1. **Real calls.** Two devices, real cameras, real networks, on Jitsi first,
-   then Meet, Teams and Zoom. Everything in this repository is a prediction
-   until that is done.
-2. **Close the small-edit gap and bind the sound.** A tighter binding of the
-   mouth region (landmark motion or a finer hash) and a fingerprint of the
-   audio in the signed statement, so that lip-sync edits and dubbed voices
-   are caught.
-3. **Visibility and moving cameras.** The seal that survives the VP8
-   denoiser is visible on flat backgrounds; finding a carrier that is not
-   (and a blind test with people to prove it) is open. So is motion
-   compensation in the receiver, without which hand-held callers cannot be
-   verified.
+1. Real calls: two devices, real cameras, real networks, Jitsi first, then Meet, Teams and Zoom.
+2. Close the small-edit gap and bind the sound: a tighter binding of the mouth region and an audio
+   fingerprint in the signed statement.
+3. Visibility and moving cameras: a carrier that viewers cannot see, a blind test with people, and
+   motion compensation in the receiver.
 
-Also open: phone mode on real hardware, the virtual-camera bridge, a neural
-face-swap attack on footage we are allowed to use, and voice-only calls.
+Also open: phone mode on real hardware, the virtual-camera bridge through OBS, a neural face-swap
+attack, face tracking in the extension, WebGPU, Firefox and Safari.
 
-## Licence
+**Documents**
 
-MIT. See [LICENSE](LICENSE).
+| File | Contents |
+|---|---|
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Components, keys, digest, channel, badge rules, limits of the design |
+| [`docs/PROTOCOL.md`](docs/PROTOCOL.md) | Wire format, error correction, digest, checks, test vector |
+| [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) | Attacker model and how each attack is handled |
+| [`docs/EVALUATION.md`](docs/EVALUATION.md) | Every measurement, including the failures, and what was not done |
+| [`docs/media/liveseal-tutorial.mp4`](docs/media/liveseal-tutorial.mp4?raw=true) | 99-second explainer video, no sound, 5.8 MB download. Its drawings show the seal far stronger than it is. |
+
+<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-07-dark.svg">
+  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-07-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-07-dark.svg">
+  <img src=".github/assets/rule-07-light.svg" width="100%" alt="07 License">
+</picture>
+
+MIT. See [`LICENSE`](LICENSE).
+
+Runtime dependencies keep their own licences: MediaPipe Tasks Vision and `jsqr` (Apache 2.0),
+`@noble/ed25519` and `qrcode-generator` (MIT). Test clips used for the measurements come from the
+Xiph.org collection and are not included in this repository.
